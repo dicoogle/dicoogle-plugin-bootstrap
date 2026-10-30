@@ -17,7 +17,10 @@ import {
   loadLock,
   verifyTemplates,
 } from "../src/lock.mjs";
-import { buildStorageData } from "../src/plan.mjs";
+import {
+  buildQueryIndexData,
+  buildStorageData,
+} from "../src/plan.mjs";
 import {
   TemplateRenderError,
   renderTemplate,
@@ -26,7 +29,7 @@ import {
   extractPlaceholders,
   tokenizeTemplate,
 } from "../src/template-syntax.mjs";
-import { storageModel } from "./helpers.mjs";
+import { queryIndexModel, storageModel } from "./helpers.mjs";
 
 test("renderer interpolates variables", () => {
   assert.equal(
@@ -162,21 +165,36 @@ test("tokenizer and placeholder extractor are shared", () => {
   );
 });
 
-test("every verified template renders with a full storage data object", () => {
+test("every verified template renders with its full data object", () => {
   const lock = loadLock();
-  const model = storageModel({
-    readable: true,
-    writable: true,
-    listable: true,
-    locator: true,
-  });
-  const data = buildStorageData(model, lock);
+  const storageData = buildStorageData(
+    storageModel({
+      readable: true,
+      writable: true,
+      listable: true,
+      locator: true,
+    }),
+    lock,
+  );
+  const queryData = buildQueryIndexData(
+    queryIndexModel({
+      ingest: true,
+      query: true,
+      move: true,
+      maintenance: true,
+      settings: true,
+    }),
+    lock,
+  );
 
   for (const templatePath of Object.keys(lock.templates)) {
     const content = readFileSync(
       path.join(DEFAULT_TEMPLATES_DIR, templatePath),
       "utf8",
     );
+    const data = templatePath.startsWith("java/query-index/")
+      ? queryData
+      : storageData;
     const rendered = renderTemplate(content, data, {
       name: templatePath,
     });

@@ -308,6 +308,34 @@ test("type tokens must be single non-empty tokens", () => {
   }
 });
 
+
+test("query-index requires at least one capability", () => {
+  expectUsageError(
+    () =>
+      validateGenerationOptions({
+        command: "java",
+        flags: { id: "my-index", family: "query-index" },
+      }),
+    /requires at least one of --ingest/,
+  );
+});
+
+test("query-index validation rejects --locator", () => {
+  expectUsageError(
+    () =>
+      validateGenerationOptions({
+        command: "java",
+        flags: {
+          id: "my-index",
+          family: "query-index",
+          query: true,
+          locator: true,
+        },
+      }),
+    /--locator is not supported/,
+  );
+});
+
 test("validateGenerationOptions fills documented defaults for java", () => {
   const result = validateGenerationOptions({
     command: "java",

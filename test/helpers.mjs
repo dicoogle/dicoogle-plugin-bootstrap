@@ -1,4 +1,7 @@
-import { buildStorageModel } from "../src/model.mjs";
+import {
+  buildQueryIndexModel,
+  buildStorageModel,
+} from "../src/model.mjs";
 
 export function storageValues(overrides = {}) {
   return {
@@ -36,6 +39,45 @@ export const STORAGE_CASES = [
       writable: true,
       listable: true,
       locator: true,
+    },
+  ],
+];
+
+export function queryIndexValues(overrides = {}) {
+  return {
+    id: "my-index",
+    family: "query-index",
+    name: "My Index",
+    description: "Demo index",
+    author: "Team",
+    pluginVersion: "0.1.0",
+    license: null,
+    type: undefined,
+    ...overrides,
+  };
+}
+
+export function queryIndexModel(flags = {}, values = {}) {
+  return buildQueryIndexModel({
+    flags,
+    values: queryIndexValues(values),
+  });
+}
+
+export const QUERY_INDEX_CASES = [
+  ["ingest", { ingest: true }],
+  ["query", { query: true }],
+  ["move", { move: true }],
+  ["maintenance", { maintenance: true }],
+  ["settings", { settings: true }],
+  [
+    "all",
+    {
+      ingest: true,
+      query: true,
+      move: true,
+      maintenance: true,
+      settings: true,
     },
   ],
 ];

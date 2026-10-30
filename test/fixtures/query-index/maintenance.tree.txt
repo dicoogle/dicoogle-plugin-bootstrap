@@ -1,0 +1,7 @@
+dicoogle-next-query-my-index/
+  pom.xml
+  README.md
+  src/main/java/org/dicoogle/query/myindex/MyIndexQueryIndexPlugin.java
+  src/main/java/org/dicoogle/query/myindex/MyIndexQueryIndexPluginConfig.java
+  src/main/java/org/dicoogle/query/myindex/MyIndexQueryIndexPluginProperties.java
+  src/test/java/org/dicoogle/query/myindex/MyIndexQueryIndexPluginTest.java

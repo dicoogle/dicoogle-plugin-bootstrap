@@ -187,9 +187,39 @@ test("storage generation refuses a non-empty target with exit 3", async (t) => {
   assert.match(result.stderr, /target directory is not empty/);
 });
 
+
+test("query-index dry-run generates the expected tree in memory", async () => {
+  const result = await run([
+    "java",
+    "--id",
+    "my-index",
+    "--family",
+    "query-index",
+    "--ingest",
+    "--dry-run",
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.match(result.stdout, /dicoogle-next-query-my-index\//);
+  assert.match(result.stdout, /MyIndexQueryIndexPlugin\.java/);
+});
+
+test("query-index without capabilities exits 2", async () => {
+  const result = await run([
+    "java",
+    "--id",
+    "my-index",
+    "--family",
+    "query-index",
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /requires at least one of --ingest/);
+});
+
 test("non-storage java, web, and init are still stubs", async () => {
   const cases = [
-    ["java", "--id", "my-plugin", "--family", "query-index"],
+    ["java", "--id", "my-plugin", "--family", "listener", "--ingest"],
     ["web", "--id", "my-plugin", "--hooks", "route"],
     ["init"],
   ];
