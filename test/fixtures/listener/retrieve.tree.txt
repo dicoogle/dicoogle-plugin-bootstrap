@@ -1,0 +1,7 @@
+dicoogle-next-service-my-audit/
+  pom.xml
+  README.md
+  src/main/java/org/dicoogle/service/myaudit/MyAuditRetrieveListener.java
+  src/main/java/org/dicoogle/service/myaudit/MyAuditRetrieveListenerConfig.java
+  src/main/java/org/dicoogle/service/myaudit/MyAuditRetrieveListenerProperties.java
+  src/test/java/org/dicoogle/service/myaudit/MyAuditRetrieveListenerTest.java

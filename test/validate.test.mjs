@@ -7,7 +7,6 @@ import {
   DEFAULT_AUTHOR,
   DEFAULT_PLUGIN_VERSION,
   JAVA_FAMILIES,
-  POLICY_TARGETS,
   WEB_HOOKS,
   validateApiVersion,
   validateAuthor,
@@ -20,7 +19,6 @@ import {
   validatePackageName,
   validatePluginId,
   validatePluginVersion,
-  validatePolicyTargets,
   validateScheme,
   validateTypeToken,
 } from "../src/validate.mjs";
@@ -217,32 +215,6 @@ test("api-version accepts only 1 or 1.0 and normalizes to 1.0", () => {
   }
 });
 
-test("policy targets are validated, deduplicated, and default to cfind", () => {
-  assert.deepEqual(validatePolicyTargets(undefined), ["cfind"]);
-  assert.deepEqual(validatePolicyTargets("cfind"), ["cfind"]);
-  assert.deepEqual(validatePolicyTargets("cfind, cmove"), [
-    "cfind",
-    "cmove",
-  ]);
-  assert.deepEqual(validatePolicyTargets("association,cfind,cmove"), [
-    "association",
-    "cfind",
-    "cmove",
-  ]);
-
-  for (const target of ["bogus", "CFIND", ",", ""]) {
-    expectUsageError(
-      () => validatePolicyTargets(target),
-      new RegExp(`Valid targets: ${POLICY_TARGETS.join(", ")}`),
-    );
-  }
-
-  expectUsageError(
-    () => validatePolicyTargets("cfind,cfind"),
-    /duplicate target/,
-  );
-});
-
 test("web hooks are validated, deduplicated, and required", () => {
   assert.deepEqual(validateHooks("route"), ["route"]);
   assert.deepEqual(validateHooks("route, sidebar-menu"), [
@@ -283,6 +255,11 @@ test("java families are validated", () => {
       new RegExp(`expected one of|missing required flag`),
     );
   }
+
+  expectUsageError(
+    () => validateFamily("dimse"),
+    /family not supported: "dimse"/,
+  );
 });
 
 test("license values are optional, SPDX-like, and one-line only", () => {
@@ -356,20 +333,6 @@ test("validateGenerationOptions fills documented defaults for java", () => {
   assert.deepEqual(result.warnings, []);
 });
 
-test("validateGenerationOptions defaults DIMSE policy targets to cfind", () => {
-  const result = validateGenerationOptions({
-    command: "java",
-    flags: {
-      id: "access-rules",
-      family: "dimse",
-      accessPolicy: true,
-    },
-  });
-
-  assert.deepEqual(result.values.policyTargets, ["cfind"]);
-  assert.equal(result.values.policyTargets.length, 1);
-});
-
 test("validateGenerationOptions validates explicit java values", () => {
   const result = validateGenerationOptions({
     command: "java",
@@ -383,7 +346,6 @@ test("validateGenerationOptions validates explicit java values", () => {
       license: "MIT",
       package: "com.example.mystore",
       scheme: "mystore",
-      policyTarget: "cfind,cmove",
       type: "custom",
     },
   });
@@ -395,8 +357,36 @@ test("validateGenerationOptions validates explicit java values", () => {
   assert.equal(result.values.license, "MIT");
   assert.equal(result.values.package, "com.example.mystore");
   assert.equal(result.values.scheme, "mystore");
-  assert.deepEqual(result.values.policyTargets, ["cfind", "cmove"]);
   assert.equal(result.values.type, "custom");
+});
+
+test("validateGenerationOptions requires exactly one listener kind", () => {
+  for (const flags of [
+    { id: "my-audit", family: "listener" },
+    {
+      id: "my-audit",
+      family: "listener",
+      ingest: true,
+      retrieve: true,
+    },
+  ]) {
+    expectUsageError(
+      () => validateGenerationOptions({ command: "java", flags }),
+      /exactly one of --ingest or --retrieve/,
+    );
+  }
+
+  const ingest = validateGenerationOptions({
+    command: "java",
+    flags: { id: "my-audit", family: "listener", ingest: true },
+  });
+  assert.equal(ingest.values.listenerKind, "ingest");
+
+  const retrieve = validateGenerationOptions({
+    command: "java",
+    flags: { id: "my-audit", family: "listener", retrieve: true },
+  });
+  assert.equal(retrieve.values.listenerKind, "retrieve");
 });
 
 test("validateGenerationOptions derives web plugin metadata", () => {

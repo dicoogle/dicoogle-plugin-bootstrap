@@ -1,0 +1,7 @@
+dicoogle-next-query-fixture-listener-ingest-long-identifier/
+  pom.xml
+  README.md
+  src/main/java/org/dicoogle/query/fixturelisteneringestlongidentifier/FixtureListenerIngestLongIdentifierIngestListener.java
+  src/main/java/org/dicoogle/query/fixturelisteneringestlongidentifier/FixtureListenerIngestLongIdentifierIngestListenerConfig.java
+  src/main/java/org/dicoogle/query/fixturelisteneringestlongidentifier/FixtureListenerIngestLongIdentifierIngestListenerProperties.java
+  src/test/java/org/dicoogle/query/fixturelisteneringestlongidentifier/FixtureListenerIngestLongIdentifierIngestListenerTest.java

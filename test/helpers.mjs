@@ -1,4 +1,5 @@
 import {
+  buildListenerModel,
   buildQueryIndexModel,
   buildStorageModel,
 } from "../src/model.mjs";
@@ -90,5 +91,41 @@ export const QUERY_INDEX_CASES = [
       settings: true,
     },
     { id: "fixture-query-index-long-ident" },
+  ],
+];
+
+export function listenerValues(overrides = {}) {
+  return {
+    id: "my-audit",
+    family: "listener",
+    name: "My Audit",
+    description: "Demo listener",
+    author: "Team",
+    pluginVersion: "0.1.0",
+    license: null,
+    type: undefined,
+    ...overrides,
+  };
+}
+
+export function listenerModel(flags = {}, values = {}) {
+  return buildListenerModel({
+    flags,
+    values: listenerValues(values),
+  });
+}
+
+export const LISTENER_CASES = [
+  ["ingest", { ingest: true }, {}],
+  ["retrieve", { retrieve: true }, {}],
+  [
+    "ingest-long",
+    { ingest: true },
+    { id: "fixture-listener-ingest-long-identifier" },
+  ],
+  [
+    "retrieve-long",
+    { retrieve: true },
+    { id: "fixture-listener-retrieve-long-identifier" },
   ],
 ];

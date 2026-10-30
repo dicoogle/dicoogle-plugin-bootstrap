@@ -251,9 +251,8 @@ test("query-index without --settings does not print the settings warning", async
   assert.doesNotMatch(result.stderr, /IndexSettingsController/);
 });
 
-test("non-storage java, web, and init are still stubs", async () => {
+test("web and init are still stubs", async () => {
   const cases = [
-    ["java", "--id", "my-plugin", "--family", "listener", "--ingest"],
     ["web", "--id", "my-plugin", "--hooks", "route"],
     ["init"],
   ];
@@ -263,6 +262,64 @@ test("non-storage java, web, and init are still stubs", async () => {
     assert.equal(result.code, EXIT_CODES.OK);
     assert.match(result.stdout, /not implemented yet/);
   }
+});
+
+test("DIMSE family is descoped with exit 2", async () => {
+  const result = await run([
+    "java",
+    "--id",
+    "my-plugin",
+    "--family",
+    "dimse",
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /family not supported: "dimse"/);
+});
+
+test("listener dry-run works for ingest and retrieve", async () => {
+  for (const kind of ["ingest", "retrieve"]) {
+    const result = await run([
+      "java",
+      "--id",
+      "my-audit",
+      "--family",
+      "listener",
+      `--${kind}`,
+      "--dry-run",
+    ]);
+
+    assert.equal(result.code, EXIT_CODES.OK);
+    assert.match(
+      result.stdout,
+      new RegExp(
+        kind === "ingest"
+          ? "dicoogle-next-query-my-audit/"
+          : "dicoogle-next-service-my-audit/",
+      ),
+    );
+    assert.match(
+      result.stdout,
+      new RegExp(
+        kind === "ingest"
+          ? "MyAuditIngestListener\\.java"
+          : "MyAuditRetrieveListener\\.java",
+      ),
+    );
+  }
+});
+
+test("listener requires exactly one kind", async () => {
+  const result = await run([
+    "java",
+    "--id",
+    "my-audit",
+    "--family",
+    "listener",
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /exactly one of --ingest or --retrieve/);
 });
 
 test("java missing required flags exits 2 before generation", async () => {

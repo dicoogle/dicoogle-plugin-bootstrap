@@ -1,0 +1,7 @@
+dicoogle-next-query-my-audit/
+  pom.xml
+  README.md
+  src/main/java/org/dicoogle/query/myaudit/MyAuditIngestListener.java
+  src/main/java/org/dicoogle/query/myaudit/MyAuditIngestListenerConfig.java
+  src/main/java/org/dicoogle/query/myaudit/MyAuditIngestListenerProperties.java
+  src/test/java/org/dicoogle/query/myaudit/MyAuditIngestListenerTest.java

@@ -45,10 +45,9 @@ test("section 5.2 conversion table for my-dicom-store", () => {
   );
 });
 
-test("family domains map storage, query-index, and dimse", () => {
+test("family domains map storage and query-index", () => {
   assert.equal(familyDomain("storage"), "storage");
   assert.equal(familyDomain("query-index"), "query");
-  assert.equal(familyDomain("dimse"), "dimse");
 });
 
 test("listener identity follows D13", () => {
@@ -103,7 +102,7 @@ test("storage identity uses the id as the default scheme", () => {
   assert.equal(identity.className, "MyDicomStoreStoragePlugin");
 });
 
-test("class suffixes cover every family and DIMSE target", () => {
+test("class suffixes cover the supported families", () => {
   const cases = [
     [
       { family: "storage", id: "x" },
@@ -121,51 +120,6 @@ test("class suffixes cover every family and DIMSE target", () => {
       { family: "listener", id: "x", listenerKind: "retrieve" },
       ["XRetrieveListener"],
     ],
-    [
-      {
-        family: "dimse",
-        id: "x",
-        policyTargets: ["cfind"],
-      },
-      ["XCFindPolicy"],
-    ],
-    [
-      {
-        family: "dimse",
-        id: "x",
-        policyTargets: ["cmove"],
-      },
-      ["XCMovePolicy"],
-    ],
-    [
-      {
-        family: "dimse",
-        id: "x",
-        policyTargets: ["association"],
-      },
-      ["XAssociationPolicy"],
-    ],
-    [
-      {
-        family: "dimse",
-        id: "x",
-        associationListener: true,
-      },
-      ["XAssociationListener"],
-    ],
-    [
-      {
-        family: "dimse",
-        id: "x",
-        policyTargets: ["cfind", "cmove"],
-        associationListener: true,
-      },
-      [
-        "XCFindPolicy",
-        "XCMovePolicy",
-        "XAssociationListener",
-      ],
-    ],
   ];
 
   for (const [input, expected] of cases) {
@@ -175,23 +129,6 @@ test("class suffixes cover every family and DIMSE target", () => {
       expected,
     );
   }
-});
-
-test("dimse identity with an association listener uses query-index type", () => {
-  const identity = deriveJavaIdentity({
-    family: "dimse",
-    id: "access-rules",
-    policyTargets: ["cfind", "cmove"],
-    associationListener: true,
-  });
-
-  assert.equal(identity.domain, "dimse");
-  assert.equal(identity.pluginType, "query-index");
-  assert.equal(
-    identity.artifactId,
-    "dicoogle-next-dimse-access-rules",
-  );
-  assert.equal(identity.configPrefix, "app.dimse.access-rules");
 });
 
 test("package collision detection groups hyphen-normalized ids", () => {

@@ -1,0 +1,7 @@
+dicoogle-next-service-fixture-listener-retrieve-long-identifier/
+  pom.xml
+  README.md
+  src/main/java/org/dicoogle/service/fixturelistenerretrievelongidentifier/FixtureListenerRetrieveLongIdentifierRetrieveListener.java
+  src/main/java/org/dicoogle/service/fixturelistenerretrievelongidentifier/FixtureListenerRetrieveLongIdentifierRetrieveListenerConfig.java
+  src/main/java/org/dicoogle/service/fixturelistenerretrievelongidentifier/FixtureListenerRetrieveLongIdentifierRetrieveListenerProperties.java
+  src/test/java/org/dicoogle/service/fixturelistenerretrievelongidentifier/FixtureListenerRetrieveLongIdentifierRetrieveListenerTest.java

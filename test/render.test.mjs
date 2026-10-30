@@ -18,6 +18,7 @@ import {
   verifyTemplates,
 } from "../src/lock.mjs";
 import {
+  buildListenerData,
   buildQueryIndexData,
   buildStorageData,
 } from "../src/plan.mjs";
@@ -29,7 +30,11 @@ import {
   extractPlaceholders,
   tokenizeTemplate,
 } from "../src/template-syntax.mjs";
-import { queryIndexModel, storageModel } from "./helpers.mjs";
+import {
+  listenerModel,
+  queryIndexModel,
+  storageModel,
+} from "./helpers.mjs";
 
 test("renderer interpolates variables", () => {
   assert.equal(
@@ -186,6 +191,10 @@ test("every verified template renders with its full data object", () => {
     }),
     lock,
   );
+  const listenerData = buildListenerData(
+    listenerModel({ ingest: true }),
+    lock,
+  );
 
   for (const templatePath of Object.keys(lock.templates)) {
     const content = readFileSync(
@@ -194,7 +203,9 @@ test("every verified template renders with its full data object", () => {
     );
     const data = templatePath.startsWith("java/query-index/")
       ? queryData
-      : storageData;
+      : templatePath.startsWith("java/listener/")
+        ? listenerData
+        : storageData;
     const rendered = renderTemplate(content, data, {
       name: templatePath,
     });
