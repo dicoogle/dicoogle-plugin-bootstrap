@@ -5,6 +5,12 @@ import { fileURLToPath } from "node:url";
 
 import { CliError, EXIT_CODES } from "./errors.mjs";
 import { LISTENER_IDENTITIES } from "./naming.mjs";
+import {
+  PLACEHOLDER_NAME_PATTERN,
+  extractPlaceholders,
+} from "./template-syntax.mjs";
+
+export { extractPlaceholders };
 
 export const LOCK_SCHEMA_VERSION = 1;
 export const LOCK_GENERATOR = "dicoogle-plugin-bootstrap";
@@ -15,8 +21,6 @@ export const DEFAULT_TEMPLATES_DIR = fileURLToPath(
   new URL("../templates", import.meta.url),
 );
 
-export const PLACEHOLDER_NAME_PATTERN =
-  /^[A-Za-z_][A-Za-z0-9_.-]*$/;
 const SHA256_PATTERN = /^[0-9a-f]{64}$/;
 const COMMIT_PATTERN = /^[0-9a-f]{40}$/;
 const TEMPLATE_PATH_PATTERN = /^[A-Za-z0-9._/-]+$/;
@@ -231,50 +235,6 @@ export function validateLockSchema(lock) {
   validateTemplateEntries(lock.templates);
 
   return lock;
-}
-
-export function extractPlaceholders(content) {
-  const used = new Set();
-  const tokenPattern = /\{\{\s*([^{}]+?)\s*\}\}/g;
-  let match;
-
-  while ((match = tokenPattern.exec(String(content))) !== null) {
-    const token = match[1].trim();
-
-    if (
-      token.length === 0 ||
-      token.startsWith("/") ||
-      token.startsWith("!")
-    ) {
-      continue;
-    }
-
-    if (token.startsWith("#")) {
-      const [helper, ...rest] = token.slice(1).trim().split(/\s+/);
-
-      if (
-        ["if", "unless", "each"].includes(helper) &&
-        rest.length > 0 &&
-        PLACEHOLDER_NAME_PATTERN.test(rest[0])
-      ) {
-        used.add(rest[0]);
-      }
-
-      continue;
-    }
-
-    if (token === "else") {
-      continue;
-    }
-
-    const name = token.split(/\s+/)[0];
-
-    if (PLACEHOLDER_NAME_PATTERN.test(name)) {
-      used.add(name);
-    }
-  }
-
-  return [...used].sort();
 }
 
 export function verifyTemplates(
