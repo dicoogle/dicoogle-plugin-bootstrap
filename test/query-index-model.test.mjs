@@ -49,11 +49,12 @@ const EXPECTED = {
 };
 
 test("query-index capability closure matches the design table", () => {
-  for (const [name, flags] of QUERY_INDEX_CASES) {
-    const model = queryIndexModel(flags);
+  for (const [name, flags, values = {}] of QUERY_INDEX_CASES) {
+    const model = queryIndexModel(flags, values);
+    const expected = EXPECTED[name] ?? EXPECTED.all;
 
-    assert.deepEqual(model.capabilities, EXPECTED[name].capabilities, name);
-    assert.deepEqual(model.interfaces, EXPECTED[name].interfaces, name);
+    assert.deepEqual(model.capabilities, expected.capabilities, name);
+    assert.deepEqual(model.interfaces, expected.interfaces, name);
   }
 });
 

@@ -32,8 +32,8 @@ function fixture(name) {
 }
 
 test("query-index plans have the expected ordered file tree", () => {
-  for (const [name, flags] of QUERY_INDEX_CASES) {
-    const model = queryIndexModel(flags);
+  for (const [name, flags, values = {}] of QUERY_INDEX_CASES) {
+    const model = queryIndexModel(flags, values);
     const plan = buildQueryIndexPlan(model, loadLock());
 
     assert.deepEqual(
@@ -57,8 +57,8 @@ test("query-index dry-run tree snapshots match for every case", (t) => {
   );
   t.after(() => rmSync(tempParent, { recursive: true, force: true }));
 
-  for (const [name, flags] of QUERY_INDEX_CASES) {
-    const model = queryIndexModel(flags);
+  for (const [name, flags, values = {}] of QUERY_INDEX_CASES) {
+    const model = queryIndexModel(flags, values);
     const plan = buildQueryIndexPlan(model, loadLock());
     const tree = formatDryRunTree({
       out: path.join(tempParent, model.artifactId),
@@ -70,8 +70,8 @@ test("query-index dry-run tree snapshots match for every case", (t) => {
 });
 
 test("composed query-index class snapshots match for every case", () => {
-  for (const [name, flags] of QUERY_INDEX_CASES) {
-    const model = queryIndexModel(flags);
+  for (const [name, flags, values = {}] of QUERY_INDEX_CASES) {
+    const model = queryIndexModel(flags, values);
     const plan = buildQueryIndexPlan(model, loadLock());
     const files = materializePlan(plan);
     const mainClass = files.find((file) =>
@@ -84,8 +84,8 @@ test("composed query-index class snapshots match for every case", () => {
 });
 
 test("query-index materialized plans are complete and token-free", () => {
-  for (const [name, flags] of QUERY_INDEX_CASES) {
-    const model = queryIndexModel(flags);
+  for (const [name, flags, values = {}] of QUERY_INDEX_CASES) {
+    const model = queryIndexModel(flags, values);
     const plan = buildQueryIndexPlan(model, loadLock());
     const files = materializePlan(plan);
 
@@ -176,6 +176,76 @@ test("query-index XML escaping is applied to the POM", () => {
       "<description>F &amp; G &lt;H&gt; &quot;I&quot; &apos;J&apos;</description>",
     ),
     pom.content,
+  );
+});
+
+
+test("settings generation warns about IndexSettingsController displacement", () => {
+  const settingsModel = queryIndexModel({ settings: true });
+  const settingsFiles = materializePlan(
+    buildQueryIndexPlan(settingsModel, loadLock()),
+  );
+  const settingsReadme = settingsFiles.find(
+    (file) => file.path === "README.md",
+  );
+
+  assert.ok(settingsReadme);
+  assert.match(settingsReadme.content, /IndexSettingsController/);
+  assert.match(settingsReadme.content, /selects the \*\*first\*\*/);
+  assert.match(settingsReadme.content, /enabled=false/);
+
+  const ingestFiles = materializePlan(
+    buildQueryIndexPlan(queryIndexModel({ ingest: true }), loadLock()),
+  );
+  const ingestReadme = ingestFiles.find(
+    (file) => file.path === "README.md",
+  );
+
+  assert.ok(ingestReadme);
+  assert.doesNotMatch(ingestReadme.content, /IndexSettingsController/);
+});
+
+test("query-index tests assert lifecycle start/stop exactly once", () => {
+  const model = queryIndexModel({ query: true });
+  const files = materializePlan(
+    buildQueryIndexPlan(model, loadLock()),
+  );
+  const testFile = files.find((file) =>
+    file.path.endsWith(`${model.className}Test.java`),
+  );
+
+  assert.ok(testFile);
+  assert.match(testFile.content, /lifecycleRunsOnce/);
+  assert.match(testFile.content, /assertEquals\(1, plugin\.startCount\(\)\)/);
+  assert.match(testFile.content, /context\.close\(\)/);
+  assert.match(testFile.content, /assertEquals\(1, plugin\.stopCount\(\)\)/);
+});
+
+test("long-id case wraps a long class name within 100 columns", () => {
+  const model = queryIndexModel(
+    {
+      ingest: true,
+      query: true,
+      move: true,
+      maintenance: true,
+      settings: true,
+    },
+    { id: "fixture-query-index-long-ident" },
+  );
+  const files = materializePlan(
+    buildQueryIndexPlan(model, loadLock()),
+  );
+  const mainClass = files.find((file) =>
+    file.path.endsWith(`/${model.className}.java`),
+  );
+
+  assert.ok(mainClass);
+  assert.ok(model.className.length >= 40);
+  assert.ok(
+    mainClass.content
+      .split("\n")
+      .every((line) => line.length <= 100),
+    "expected GJF-compatible lines no longer than 100 columns",
   );
 });
 

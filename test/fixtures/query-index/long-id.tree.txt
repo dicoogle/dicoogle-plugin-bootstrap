@@ -1,0 +1,7 @@
+dicoogle-next-query-fixture-query-index-long-ident/
+  pom.xml
+  README.md
+  src/main/java/org/dicoogle/query/fixturequeryindexlongident/FixtureQueryIndexLongIdentQueryIndexPlugin.java
+  src/main/java/org/dicoogle/query/fixturequeryindexlongident/FixtureQueryIndexLongIdentQueryIndexPluginConfig.java
+  src/main/java/org/dicoogle/query/fixturequeryindexlongident/FixtureQueryIndexLongIdentQueryIndexPluginProperties.java
+  src/test/java/org/dicoogle/query/fixturequeryindexlongident/FixtureQueryIndexLongIdentQueryIndexPluginTest.java

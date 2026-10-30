@@ -80,4 +80,15 @@ export const QUERY_INDEX_CASES = [
       settings: true,
     },
   ],
+  [
+    "long-id",
+    {
+      ingest: true,
+      query: true,
+      move: true,
+      maintenance: true,
+      settings: true,
+    },
+    { id: "fixture-query-index-long-ident" },
+  ],
 ];

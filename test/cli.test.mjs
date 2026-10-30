@@ -46,6 +46,7 @@ test("--help prints usage and exits 0", async () => {
   assert.equal(result.stderr, "");
   assert.match(result.stdout, /^Usage: dicoogle-plugin-bootstrap <command>/);
   assert.match(result.stdout, /Commands:/);
+  assert.match(result.stdout, /IndexSettingsController/);
   assert.match(result.stdout, /Exit codes:/);
 });
 
@@ -215,6 +216,39 @@ test("query-index without capabilities exits 2", async () => {
 
   assert.equal(result.code, EXIT_CODES.USAGE);
   assert.match(result.stderr, /requires at least one of --ingest/);
+});
+
+
+test("--settings prints the settings displacement warning", async () => {
+  const result = await run([
+    "java",
+    "--id",
+    "my-index",
+    "--family",
+    "query-index",
+    "--settings",
+    "--dry-run",
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.match(result.stderr, /IndexSettingsController selects the FIRST/);
+  assert.match(result.stderr, /enabled=false/);
+  assert.match(result.stdout, /dicoogle-next-query-my-index\//);
+});
+
+test("query-index without --settings does not print the settings warning", async () => {
+  const result = await run([
+    "java",
+    "--id",
+    "my-index",
+    "--family",
+    "query-index",
+    "--query",
+    "--dry-run",
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.doesNotMatch(result.stderr, /IndexSettingsController/);
 });
 
 test("non-storage java, web, and init are still stubs", async () => {

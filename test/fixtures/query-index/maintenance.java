@@ -14,6 +14,8 @@ public class MyIndexQueryIndexPlugin implements QueryIndexMaintenance {
       new PluginMetadata("my-index", "My Index", "0.1.0", "query-index");
   private final MyIndexQueryIndexPluginProperties properties;
   private final Map<String, IndexEntry> index = new ConcurrentHashMap<>();
+  private int startCalls;
+  private int stopCalls;
 
   private record IndexEntry(
       String studyInstanceUid,
@@ -29,6 +31,24 @@ public class MyIndexQueryIndexPlugin implements QueryIndexMaintenance {
   @Override
   public PluginMetadata metadata() {
     return METADATA;
+  }
+
+  @Override
+  public void start() {
+    startCalls++;
+  }
+
+  @Override
+  public void stop() {
+    stopCalls++;
+  }
+
+  int startCount() {
+    return startCalls;
+  }
+
+  int stopCount() {
+    return stopCalls;
   }
 
   void seedIndex(
