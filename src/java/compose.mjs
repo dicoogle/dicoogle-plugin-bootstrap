@@ -1,5 +1,9 @@
 import { TemplateRenderError, renderTemplate } from "../render.mjs";
 import {
+  queryIndexClassFragments,
+  queryIndexTestFragments,
+} from "./fragments/query-index/index.mjs";
+import {
   storageClassFragments,
   storageTestFragments,
 } from "./fragments/storage/index.mjs";
@@ -125,7 +129,10 @@ function wrapLongLine(line, maxLength = 100) {
       ];
     }
 
-    return [before, `${continuation}${after}`];
+    return [
+      before,
+      ...wrapLongLine(`${continuation}${after}`, maxLength),
+    ];
   }
 
   const trimmed = line.trimStart();
@@ -135,6 +142,58 @@ function wrapLongLine(line, maxLength = 100) {
     return [
       line.slice(0, index + 1),
       `${" ".repeat(leading + 4)}${line.slice(index + 1)}`,
+    ];
+  }
+
+  if (trimmed.startsWith("assertTrue(")) {
+    const index = line.indexOf("(");
+    return [
+      line.slice(0, index + 1),
+      `${" ".repeat(leading + 4)}${line.slice(index + 1)}`,
+    ];
+  }
+
+  if (
+    trimmed.startsWith("public ") &&
+    line.endsWith(") {")
+  ) {
+    const index = line.indexOf("(");
+    return [
+      line.slice(0, index + 1),
+      `${" ".repeat(leading + 4)}${line.slice(index + 1)}`,
+    ];
+  }
+
+  const newIndex = line.indexOf("new ");
+
+  if (newIndex !== -1) {
+    const index = line.indexOf("(", newIndex);
+
+    if (index !== -1) {
+      return [
+        line.slice(0, index + 1),
+        `${" ".repeat(leading + 4)}${line.slice(index + 1)}`,
+      ];
+    }
+  }
+
+  if (trimmed.startsWith(".run(context -> assertTrue(")) {
+    const runIndex = line.indexOf(".run(");
+    const prefix = `${line.slice(0, runIndex)}.run(`;
+    const innerStart = line.indexOf("context -> assertTrue(");
+    const afterPrefix = line.slice(
+      innerStart + "context -> assertTrue(".length,
+    );
+    const innerLine = `${" ".repeat(leading + 4)}context -> assertTrue(${afterPrefix}`;
+
+    if (innerLine.length <= maxLength) {
+      return [prefix, innerLine];
+    }
+
+    return [
+      prefix,
+      `${" ".repeat(leading + 4)}context ->`,
+      `${" ".repeat(leading + 8)}assertTrue(${afterPrefix}`,
     ];
   }
 
@@ -201,8 +260,10 @@ function renderConstructor(className, constructor, data, templateName) {
   );
   const body = renderLines(constructor.body, data, templateName);
 
+  const signatureLine = `  public ${className}(${params}) {`;
+
   return [
-    `  public ${className}(${params}) {`,
+    ...wrapLongLine(signatureLine),
     ...indentLines(body, 4).flatMap((line) => wrapLongLine(line)),
     "  }",
   ];
@@ -555,4 +616,49 @@ export function validateJavaSource({
   }
 
   return source;
+}
+
+export function composeQueryIndexClass(model, data) {
+  const fragments = queryIndexClassFragments(model);
+  const imports = fragments.flatMap((fragment) => fragment.imports ?? []);
+  const fields = fragments.flatMap((fragment) => fragment.fields ?? []);
+  const methods = fragments.flatMap((fragment) => fragment.methods ?? []);
+  const constructor = fragments.find(
+    (fragment) => fragment.constructor,
+  )?.constructor;
+
+  return composeJavaClass({
+    className: model.className,
+    packageName: model.package,
+    licenseHeader: data.licenseHeader,
+    interfaces: model.interfaces,
+    imports,
+    fields,
+    constructor,
+    methods,
+    data,
+    templateName: `query-index class ${model.className}`,
+  });
+}
+
+export function composeQueryIndexTest(model, data) {
+  const fragments = queryIndexTestFragments(model);
+  const imports = fragments.flatMap(
+    (fragment) => fragment.testImports ?? [],
+  );
+  const fields = fragments.flatMap(
+    (fragment) => fragment.testFields ?? [],
+  );
+  const tests = fragments.flatMap((fragment) => fragment.tests ?? []);
+
+  return composeTestClass({
+    className: `${model.className}Test`,
+    packageName: model.package,
+    licenseHeader: data.licenseHeader,
+    imports,
+    fields,
+    tests,
+    data,
+    templateName: `query-index test ${model.className}Test`,
+  });
 }

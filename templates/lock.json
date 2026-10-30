@@ -100,6 +100,71 @@
         "propertiesAnnotationOneLine",
         "scheme"
       ]
+    },
+    "java/query-index/pom.xml.tmpl": {
+      "source": "internal:java/query-index/pom.xml.tmpl",
+      "sha256": "e60a667c5101fe355368f609cef8e10054b7f062aff73788da6ee97a8dce229b",
+      "placeholders": [
+        "artifactId",
+        "descriptionXml",
+        "nameXml",
+        "parentArtifactId",
+        "parentGroupId",
+        "parentVersion",
+        "sdkArtifactId"
+      ]
+    },
+    "java/query-index/README.md.tmpl": {
+      "source": "internal:java/query-index/README.md.tmpl",
+      "sha256": "db55f4e0df69a9c8f201addc3827b4f3da6fcf16c9622944860de6bb95ca5e25",
+      "placeholders": [
+        "artifactId",
+        "commit",
+        "dcm4cheVersion",
+        "description",
+        "enabledDefault",
+        "id",
+        "indexId",
+        "ingest",
+        "javaVersion",
+        "licenseSpdx",
+        "maintenance",
+        "mavenMinimum",
+        "move",
+        "name",
+        "package",
+        "parentVersion",
+        "pluginType",
+        "query",
+        "sdkVersion",
+        "settings",
+        "springBootVersion"
+      ]
+    },
+    "java/query-index/config.java.tmpl": {
+      "source": "internal:java/query-index/config.java.tmpl",
+      "sha256": "a4f87903264f988c0d36809da4425cc593a002d6cdc76d51c7a5aab889032ee2",
+      "placeholders": [
+        "ClassName",
+        "configMethodOneLine",
+        "configPrefix",
+        "licenseHeader",
+        "matchIfMissing",
+        "package"
+      ]
+    },
+    "java/query-index/properties.java.tmpl": {
+      "source": "internal:java/query-index/properties.java.tmpl",
+      "sha256": "67fd3edd4b46722a870db5567b4514efde65dcc152b5f303f5a9d03be3a6033f",
+      "placeholders": [
+        "ClassName",
+        "configPrefix",
+        "enabledDefault",
+        "id",
+        "licenseHeader",
+        "package",
+        "propertiesAnnotationOneLine"
+      ]
     }
   }
 }

@@ -4,10 +4,13 @@ import path from "node:path";
 import { TemplateLockError, DEFAULT_TEMPLATES_DIR } from "./lock.mjs";
 import { renderTemplate } from "./render.mjs";
 import {
+  composeQueryIndexClass,
+  composeQueryIndexTest,
   composeStorageClass,
   composeStorageTest,
   validateJavaSource,
 } from "./java/compose.mjs";
+import { expectedQueryIndexMethods } from "./java/fragments/query-index/index.mjs";
 import { expectedStorageMethods } from "./java/fragments/storage/index.mjs";
 
 export function escapeXml(value) {
@@ -95,6 +98,88 @@ export function buildStoragePlan(model, lock) {
   return {
     root: model.out,
     family: "storage",
+    model,
+    lock,
+    data,
+    files,
+  };
+}
+
+export function buildQueryIndexData(model, lock) {
+  const pin = lock.dicoogleNext;
+
+  return {
+    ...model,
+    ...pin,
+    capabilities: model.capabilities,
+    ingest: model.ingest,
+    query: model.query,
+    move: model.move,
+    maintenance: model.maintenance,
+    settings: model.settings,
+    indexId: model.indexId,
+    nameXml: escapeXml(model.name),
+    descriptionXml: escapeXml(model.description),
+    configMethodOneLine:
+      `  ${model.className} queryIndexPlugin(${model.className}Properties properties) {`
+        .length <= 100,
+    propertiesAnnotationOneLine:
+      `@ConfigurationProperties(prefix = "${model.configPrefix}")`.length <= 100,
+    licenseHeader: model.licenseHeader,
+    licenseSpdx: model.license ?? "",
+    enabledDefault: model.enabledDefault,
+    matchIfMissing: model.matchIfMissing,
+    ClassName: model.className,
+    className: model.className,
+  };
+}
+
+export function buildQueryIndexPlan(model, lock) {
+  const data = buildQueryIndexData(model, lock);
+  const mainClassPath =
+    `src/main/java/${model.packagePath}/${model.className}.java`;
+  const testClassPath =
+    `src/test/java/${model.packagePath}/${model.className}Test.java`;
+  const files = [
+    {
+      path: "pom.xml",
+      kind: "template",
+      template: "java/query-index/pom.xml.tmpl",
+      data,
+    },
+    {
+      path: "README.md",
+      kind: "template",
+      template: "java/query-index/README.md.tmpl",
+      data,
+    },
+    {
+      path: mainClassPath,
+      kind: "query-index-class",
+      data,
+    },
+    {
+      path: `src/main/java/${model.packagePath}/${model.className}Config.java`,
+      kind: "template",
+      template: "java/query-index/config.java.tmpl",
+      data,
+    },
+    {
+      path: `src/main/java/${model.packagePath}/${model.className}Properties.java`,
+      kind: "template",
+      template: "java/query-index/properties.java.tmpl",
+      data,
+    },
+    {
+      path: testClassPath,
+      kind: "query-index-test",
+      data,
+    },
+  ];
+
+  return {
+    root: model.out,
+    family: "query-index",
     model,
     lock,
     data,
@@ -195,16 +280,22 @@ function validateMaterializedPlan(plan, files) {
       );
     }
 
-    const isMainClass = file.kind === "storage-class";
+    const isStorageClass = file.kind === "storage-class";
+    const isQueryIndexClass = file.kind === "query-index-class";
 
     validateJavaSource({
       content,
       expectedPackage: plan.model.package,
       expectedType,
-      expectedMethods: isMainClass
+      expectedMethods: isStorageClass
         ? expectedStorageMethods(plan.model)
-        : [],
-      interfaces: isMainClass ? plan.model.interfaces : [],
+        : isQueryIndexClass
+          ? expectedQueryIndexMethods(plan.model)
+          : [],
+      interfaces:
+        isStorageClass || isQueryIndexClass
+          ? plan.model.interfaces
+          : [],
     });
   }
 }
@@ -230,6 +321,10 @@ export function materializePlan(
       content = composeStorageClass(plan.model, entry.data);
     } else if (entry.kind === "storage-test") {
       content = composeStorageTest(plan.model, entry.data);
+    } else if (entry.kind === "query-index-class") {
+      content = composeQueryIndexClass(plan.model, entry.data);
+    } else if (entry.kind === "query-index-test") {
+      content = composeQueryIndexTest(plan.model, entry.data);
     } else {
       throw new TemplateLockError(
         `unknown plan entry kind "${entry.kind}" for ${entry.path}`,

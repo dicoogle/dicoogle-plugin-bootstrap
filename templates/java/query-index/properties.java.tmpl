@@ -1,0 +1,48 @@
+{{#if licenseHeader}}{{licenseHeader}}
+
+{{/if}}package {{package}};
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+{{#if propertiesAnnotationOneLine}}@ConfigurationProperties(prefix = "{{configPrefix}}")
+{{/if}}{{#unless propertiesAnnotationOneLine}}@ConfigurationProperties(
+    prefix = "{{configPrefix}}")
+{{/unless}}public class {{ClassName}}Properties {
+
+  private boolean enabled = {{enabledDefault}};
+  private String rootDir = "./data/{{id}}";
+  private String indexName = "{{id}}";
+  private boolean watchEnabled = false;
+
+  public boolean isEnabled() {
+    return enabled;
+  }
+
+  public void setEnabled(boolean enabled) {
+    this.enabled = enabled;
+  }
+
+  public String getRootDir() {
+    return rootDir;
+  }
+
+  public void setRootDir(String rootDir) {
+    this.rootDir = rootDir;
+  }
+
+  public String getIndexName() {
+    return indexName;
+  }
+
+  public void setIndexName(String indexName) {
+    this.indexName = indexName;
+  }
+
+  public boolean isWatchEnabled() {
+    return watchEnabled;
+  }
+
+  public void setWatchEnabled(boolean watchEnabled) {
+    this.watchEnabled = watchEnabled;
+  }
+}

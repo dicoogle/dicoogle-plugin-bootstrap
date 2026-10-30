@@ -10,9 +10,13 @@ import {
 } from "./errors.mjs";
 import { formatDryRunTree, writePlan } from "./fs.mjs";
 import { DEFAULT_TEMPLATES_DIR, loadLock } from "./lock.mjs";
-import { buildStorageModel } from "./model.mjs";
+import { buildQueryIndexModel, buildStorageModel } from "./model.mjs";
 import { inspectParentPom } from "./parent.mjs";
-import { buildStoragePlan, materializePlan } from "./plan.mjs";
+import {
+  buildQueryIndexPlan,
+  buildStoragePlan,
+  materializePlan,
+} from "./plan.mjs";
 import { validateGenerationOptions } from "./validate.mjs";
 
 const PACKAGE_JSON_URL = new URL("../package.json", import.meta.url);
@@ -162,22 +166,33 @@ export async function main(
         return EXIT_CODES.OK;
       }
       case "java": {
-        if (validated.values?.family !== "storage") {
+        const family = validated.values?.family;
+
+        if (family !== "storage" && family !== "query-index") {
           io.stdout.write(
             `dicoogle-plugin-bootstrap: java generation for family ` +
-              `"${validated.values?.family ?? "unknown"}" is not implemented yet ` +
-              "(storage only).\n",
+              `"${family ?? "unknown"}" is not implemented yet ` +
+              "(storage and query-index only).\n",
           );
           return EXIT_CODES.OK;
         }
 
         const lock = loadLock();
-        const model = buildStorageModel({
-          flags: parsed.flags,
-          values: validated.values,
-        });
+        const model =
+          family === "storage"
+            ? buildStorageModel({
+                flags: parsed.flags,
+                values: validated.values,
+              })
+            : buildQueryIndexModel({
+                flags: parsed.flags,
+                values: validated.values,
+              });
         inspectParentPom({ out: model.out, lock });
-        const plan = buildStoragePlan(model, lock);
+        const plan =
+          family === "storage"
+            ? buildStoragePlan(model, lock)
+            : buildQueryIndexPlan(model, lock);
         const files = materializePlan(plan, {
           templatesDir: DEFAULT_TEMPLATES_DIR,
         });
@@ -207,7 +222,7 @@ export async function main(
       case "init":
       case "web": {
         io.stdout.write(
-          `dicoogle-plugin-bootstrap: ${parsed.command} generation is not implemented yet (milestone 4: storage plan).\n`,
+          `dicoogle-plugin-bootstrap: ${parsed.command} generation is not implemented yet (storage and query-index implemented).\n`,
         );
         return EXIT_CODES.OK;
       }

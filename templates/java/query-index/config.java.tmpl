@@ -1,0 +1,25 @@
+{{#if licenseHeader}}{{licenseHeader}}
+
+{{/if}}package {{package}};
+
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableConfigurationProperties({{ClassName}}Properties.class)
+public class {{ClassName}}Config {
+
+  @Bean(initMethod = "start", destroyMethod = "stop")
+  @ConditionalOnProperty(
+      prefix = "{{configPrefix}}",
+      name = "enabled",
+      havingValue = "true",
+      matchIfMissing = {{matchIfMissing}})
+{{#if configMethodOneLine}}  {{ClassName}} queryIndexPlugin({{ClassName}}Properties properties) {
+{{/if}}{{#unless configMethodOneLine}}  {{ClassName}} queryIndexPlugin(
+      {{ClassName}}Properties properties) {
+{{/unless}}    return new {{ClassName}}(properties);
+  }
+}

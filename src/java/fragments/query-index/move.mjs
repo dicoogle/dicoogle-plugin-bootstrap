@@ -1,0 +1,70 @@
+export default {
+  id: "query-index.move",
+  imports: [
+    "java.io.IOException",
+    "java.util.ArrayList",
+    "java.util.List",
+    "org.dicoogle.sdk.query.QueryMoveService",
+  ],
+  interfaces: ["QueryMoveService"],
+  methods: [
+    {
+      name: "resolve",
+      signature:
+        "public List<MoveCandidate> resolve(MoveRequest request) throws IOException",
+      body: [
+        "// TODO: replace the in-memory scan with real move resolution.",
+        "List<MoveCandidate> results = new ArrayList<>();",
+        "for (IndexEntry entry : index.values()) {",
+        "  if (request.cancelRequested() != null && request.cancelRequested().getAsBoolean()) {",
+        "    break;",
+        "  }",
+        "  results.add(new MoveCandidate(entry.sopClassUid(), entry.sopInstanceUid(), entry.location()));",
+        "}",
+        "return results;",
+      ],
+    },
+  ],
+  testImports: [
+    "java.net.URI",
+    "org.dcm4che3.data.Attributes",
+    "org.dicoogle.sdk.query.QueryMoveService",
+    "org.dicoogle.sdk.query.QueryRetrieveLevel",
+    "org.dicoogle.sdk.query.QueryService",
+    "static org.junit.jupiter.api.Assertions.assertFalse",
+    "static org.junit.jupiter.api.Assertions.assertTrue",
+  ],
+  tests: [
+    {
+      name: "moveResolvesSeededEntry",
+      body: [
+        "{{ClassName}} plugin = new {{ClassName}}(new {{ClassName}}Properties());",
+        "plugin.seedIndex(",
+        "    \"1.2.3\",",
+        "    \"1.2.3.1\",",
+        "    \"1.2.3.1.1\",",
+        "    \"1.2.840.10008.5.1.4.1.1.7\",",
+        "    URI.create(\"file:///tmp/move.dcm\"));",
+        "var request =",
+        "    new QueryMoveService.MoveRequest(",
+        "        QueryService.InformationModel.STUDY_ROOT,",
+        "        QueryRetrieveLevel.STUDY,",
+        "        \"CALLING\",",
+        "        \"CALLED\",",
+        "        \"DESTINATION\",",
+        "        1,",
+        "        new Attributes(),",
+        "        () -> false);",
+        "assertFalse(plugin.resolve(request).isEmpty());",
+      ],
+    },
+    {
+      name: "isVisibleAsMoveService",
+      body: [
+        "contextRunner",
+        "    .withPropertyValues(\"{{configPrefix}}.enabled=true\")",
+        "    .run(context -> assertTrue(context.getBeansOfType(QueryMoveService.class).size() == 1));",
+      ],
+    },
+  ],
+};

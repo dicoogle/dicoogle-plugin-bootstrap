@@ -655,6 +655,31 @@ export function validateGenerationOptions(
         values.listenerKind = "retrieve";
       }
     }
+
+    if (values.family === "query-index") {
+      if (flags.locator === true) {
+        throw new UsageError(
+          "--locator is not supported for the query-index family: only " +
+            "storage plugins feed List<DicomInstanceLocator> on " +
+            "dicoogle-next HEAD.",
+        );
+      }
+
+      const capabilities = [
+        "ingest",
+        "query",
+        "move",
+        "maintenance",
+        "settings",
+      ];
+
+      if (!capabilities.some((capability) => flags[capability] === true)) {
+        throw new UsageError(
+          "query-index requires at least one of --ingest, --query, " +
+            "--move, --maintenance, or --settings.",
+        );
+      }
+    }
   } else {
     values.hooks = validateHooks(
       requireFlag(
