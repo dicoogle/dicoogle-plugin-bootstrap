@@ -8,6 +8,7 @@ import {
   formatError,
   normalizeError,
 } from "./errors.mjs";
+import { validateGenerationOptions } from "./validate.mjs";
 
 const PACKAGE_JSON_URL = new URL("../package.json", import.meta.url);
 const TEMPLATE_LOCK_URL = new URL("../templates/lock.json", import.meta.url);
@@ -160,6 +161,12 @@ export async function main(
       return EXIT_CODES.OK;
     }
 
+    const validated = validateGenerationOptions(parsed);
+
+    for (const warning of validated.warnings) {
+      io.stderr.write(`warning: ${warning}\n`);
+    }
+
     switch (parsed.command) {
       case "version": {
         io.stdout.write(formatVersion(readTemplateLock()));
@@ -173,7 +180,7 @@ export async function main(
       case "java":
       case "web": {
         io.stdout.write(
-          `dicoogle-plugin-bootstrap: ${parsed.command} generation is not implemented yet (milestone 1 skeleton).\n`,
+          `dicoogle-plugin-bootstrap: ${parsed.command} generation is not implemented yet (milestone 2: validation/naming).\n`,
         );
         return EXIT_CODES.OK;
       }
