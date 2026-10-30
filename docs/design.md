@@ -842,6 +842,7 @@ dicoogle-plugin-bootstrap/
     interactive.mjs            # readline/promises wizard
     validate.mjs               # id/name/package/scheme/version rules
     naming.mjs                 # case conversions and derived values
+    parent.mjs                 # parent POM target/GAV validation
     model.mjs                  # family/hook model + closure rules
     plan.mjs                   # ordered file plan + materialization
     template-syntax.mjs        # shared tokenizer/placeholder extractor
