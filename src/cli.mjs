@@ -10,9 +10,14 @@ import {
 } from "./errors.mjs";
 import { formatDryRunTree, writePlan } from "./fs.mjs";
 import { DEFAULT_TEMPLATES_DIR, loadLock } from "./lock.mjs";
-import { buildQueryIndexModel, buildStorageModel } from "./model.mjs";
+import {
+  buildListenerModel,
+  buildQueryIndexModel,
+  buildStorageModel,
+} from "./model.mjs";
 import { inspectParentPom } from "./parent.mjs";
 import {
+  buildListenerPlan,
   buildQueryIndexPlan,
   buildStoragePlan,
   materializePlan,
@@ -50,7 +55,7 @@ Common generation flags:
   --type <token>          Override the single metadata type token
 
 Java flags:
-  --family storage|query-index|listener|dimse
+  --family storage|query-index|listener
   storage:     --readable --writable --listable --locator
   query-index: --ingest --query --move --maintenance --settings
                warning: IndexSettingsController selects the FIRST QueryIndexSettings
@@ -59,8 +64,6 @@ Java flags:
                but ordering is not a stable contract; set enabled=false on one of
                them to be safe.
   listener:    --ingest | --retrieve
-  dimse:       --access-policy [--policy-target cfind,cmove,association]
-               | --association-listener
 
 Web flags:
   --hooks <a,b>       query-filter,result-options,result-batch,
@@ -129,7 +132,6 @@ function formatList(lock) {
     "  storage      --readable --writable --listable --locator (default: --readable)",
     "  query-index  --ingest --query --move --maintenance --settings (--locator rejected)",
     "  listener     --ingest (app.query, query-index) | --retrieve (app.service, service)",
-    "  dimse        --access-policy [--policy-target cfind,cmove,association] | --association-listener",
     "",
     "Web hooks:",
     "  query-filter, result-options, result-batch, result-renderer, sidebar-menu, route, settings",
@@ -185,11 +187,15 @@ export async function main(
       case "java": {
         const family = validated.values?.family;
 
-        if (family !== "storage" && family !== "query-index") {
+        if (
+          family !== "storage" &&
+          family !== "query-index" &&
+          family !== "listener"
+        ) {
           io.stdout.write(
             `dicoogle-plugin-bootstrap: java generation for family ` +
               `"${family ?? "unknown"}" is not implemented yet ` +
-              "(storage and query-index only).\n",
+              "(storage, query-index, and listener only).\n",
           );
           return EXIT_CODES.OK;
         }
@@ -201,15 +207,22 @@ export async function main(
                 flags: parsed.flags,
                 values: validated.values,
               })
-            : buildQueryIndexModel({
-                flags: parsed.flags,
-                values: validated.values,
-              });
+            : family === "query-index"
+              ? buildQueryIndexModel({
+                  flags: parsed.flags,
+                  values: validated.values,
+                })
+              : buildListenerModel({
+                  flags: parsed.flags,
+                  values: validated.values,
+                });
         inspectParentPom({ out: model.out, lock });
         const plan =
           family === "storage"
             ? buildStoragePlan(model, lock)
-            : buildQueryIndexPlan(model, lock);
+            : family === "query-index"
+              ? buildQueryIndexPlan(model, lock)
+              : buildListenerPlan(model, lock);
         const files = materializePlan(plan, {
           templatesDir: DEFAULT_TEMPLATES_DIR,
         });
@@ -239,7 +252,7 @@ export async function main(
       case "init":
       case "web": {
         io.stdout.write(
-          `dicoogle-plugin-bootstrap: ${parsed.command} generation is not implemented yet (storage and query-index implemented).\n`,
+          `dicoogle-plugin-bootstrap: ${parsed.command} generation is not implemented yet (storage, query-index, and listener implemented).\n`,
         );
         return EXIT_CODES.OK;
       }

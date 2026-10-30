@@ -3,7 +3,6 @@ import { UsageError } from "./errors.mjs";
 export const JAVA_FAMILY_DOMAINS = Object.freeze({
   storage: "storage",
   "query-index": "query",
-  dimse: "dimse",
 });
 
 export const LISTENER_IDENTITIES = Object.freeze({
@@ -17,12 +16,6 @@ export const LISTENER_IDENTITIES = Object.freeze({
     pluginType: "service",
     classSuffix: "RetrieveListener",
   }),
-});
-
-export const DIMSE_POLICY_SUFFIXES = Object.freeze({
-  cfind: "CFindPolicy",
-  cmove: "CMovePolicy",
-  association: "AssociationPolicy",
 });
 
 export const WEB_COMPONENT_SUFFIXES = Object.freeze({
@@ -104,7 +97,7 @@ export function familyDomain(family, listenerKind) {
   return domain;
 }
 
-export function familyPluginType(family, listenerKind, associationListener = false) {
+export function familyPluginType(family, listenerKind) {
   switch (family) {
     case "storage":
       return "storage";
@@ -112,8 +105,6 @@ export function familyPluginType(family, listenerKind, associationListener = fal
       return "query-index";
     case "listener":
       return listenerIdentity(listenerKind).pluginType;
-    case "dimse":
-      return associationListener ? "query-index" : null;
     default:
       throw new UsageError(`unknown Java family "${family}".`);
   }
@@ -127,50 +118,12 @@ export function classSuffixFor(family, options = {}) {
       return "QueryIndexPlugin";
     case "listener":
       return listenerIdentity(options.listenerKind).classSuffix;
-    case "dimse": {
-      if (options.policyTarget) {
-        const suffix = DIMSE_POLICY_SUFFIXES[options.policyTarget];
-
-        if (!suffix) {
-          throw new UsageError(
-            `unknown DIMSE policy target "${options.policyTarget}".`,
-          );
-        }
-
-        return suffix;
-      }
-
-      if (options.associationListener) {
-        return "AssociationListener";
-      }
-
-      throw new UsageError(
-        "DIMSE identity requires a policy target or an association listener.",
-      );
-    }
     default:
       throw new UsageError(`unknown Java family "${family}".`);
   }
 }
 
-export function classSuffixesFor({
-  family,
-  listenerKind,
-  policyTargets = [],
-  associationListener = false,
-}) {
-  if (family === "dimse") {
-    const suffixes = policyTargets.map((policyTarget) =>
-      classSuffixFor("dimse", { policyTarget }),
-    );
-
-    if (associationListener) {
-      suffixes.push("AssociationListener");
-    }
-
-    return [...new Set(suffixes)];
-  }
-
+export function classSuffixesFor({ family, listenerKind }) {
   return [classSuffixFor(family, { listenerKind })];
 }
 
@@ -178,22 +131,14 @@ export function deriveJavaIdentity({
   family,
   id,
   listenerKind,
-  policyTargets = [],
-  associationListener = false,
   packageName,
   scheme,
   typeOverride,
 }) {
   const domain = familyDomain(family, listenerKind);
-  const pluginType =
-    typeOverride ?? familyPluginType(family, listenerKind, associationListener);
+  const pluginType = typeOverride ?? familyPluginType(family, listenerKind);
   const resolvedPackage = packageName ?? defaultPackageFor(id, domain);
-  const suffixes = classSuffixesFor({
-    family,
-    listenerKind,
-    policyTargets,
-    associationListener,
-  });
+  const suffixes = classSuffixesFor({ family, listenerKind });
   const classes = suffixes.map((suffix) => ({
     suffix,
     className: classNameFor(id, suffix),

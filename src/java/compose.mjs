@@ -1,5 +1,9 @@
 import { TemplateRenderError, renderTemplate } from "../render.mjs";
 import {
+  listenerClassFragments,
+  listenerTestFragments,
+} from "./fragments/listener/index.mjs";
+import {
   queryIndexClassFragments,
   queryIndexTestFragments,
 } from "./fragments/query-index/index.mjs";
@@ -513,8 +517,8 @@ export function composeStorageClass(model, data) {
   const imports = fragments.flatMap((fragment) => fragment.imports ?? []);
   const fields = fragments.flatMap((fragment) => fragment.fields ?? []);
   const methods = fragments.flatMap((fragment) => fragment.methods ?? []);
-  const constructor = fragments.find(
-    (fragment) => fragment.constructor,
+  const constructor = fragments.find((fragment) =>
+    Object.hasOwn(fragment, "constructor"),
   )?.constructor;
 
   return composeJavaClass({
@@ -713,8 +717,8 @@ export function composeQueryIndexClass(model, data) {
   const imports = fragments.flatMap((fragment) => fragment.imports ?? []);
   const fields = fragments.flatMap((fragment) => fragment.fields ?? []);
   const methods = fragments.flatMap((fragment) => fragment.methods ?? []);
-  const constructor = fragments.find(
-    (fragment) => fragment.constructor,
+  const constructor = fragments.find((fragment) =>
+    Object.hasOwn(fragment, "constructor"),
   )?.constructor;
 
   return composeJavaClass({
@@ -750,5 +754,50 @@ export function composeQueryIndexTest(model, data) {
     tests,
     data,
     templateName: `query-index test ${model.className}Test`,
+  });
+}
+
+export function composeListenerClass(model, data) {
+  const fragments = listenerClassFragments(model);
+  const imports = fragments.flatMap((fragment) => fragment.imports ?? []);
+  const fields = fragments.flatMap((fragment) => fragment.fields ?? []);
+  const methods = fragments.flatMap((fragment) => fragment.methods ?? []);
+  const constructor = fragments.find((fragment) =>
+    Object.hasOwn(fragment, "constructor"),
+  )?.constructor;
+
+  return composeJavaClass({
+    className: model.className,
+    packageName: model.package,
+    licenseHeader: data.licenseHeader,
+    interfaces: model.interfaces,
+    imports,
+    fields,
+    constructor,
+    methods,
+    data,
+    templateName: `listener class ${model.className}`,
+  });
+}
+
+export function composeListenerTest(model, data) {
+  const fragments = listenerTestFragments(model);
+  const imports = fragments.flatMap(
+    (fragment) => fragment.testImports ?? [],
+  );
+  const fields = fragments.flatMap(
+    (fragment) => fragment.testFields ?? [],
+  );
+  const tests = fragments.flatMap((fragment) => fragment.tests ?? []);
+
+  return composeTestClass({
+    className: `${model.className}Test`,
+    packageName: model.package,
+    licenseHeader: data.licenseHeader,
+    imports,
+    fields,
+    tests,
+    data,
+    templateName: `listener test ${model.className}Test`,
   });
 }

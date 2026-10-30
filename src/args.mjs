@@ -27,10 +27,8 @@ const JAVA_BOOLEAN = [
   "--maintenance",
   "--settings",
   "--retrieve",
-  "--access-policy",
-  "--association-listener",
 ];
-const JAVA_VALUE = ["--family", "--policy-target", "--package", "--scheme"];
+const JAVA_VALUE = ["--family", "--package", "--scheme"];
 
 const WEB_BOOLEAN = [];
 const WEB_VALUE = ["--hooks", "--api-version"];

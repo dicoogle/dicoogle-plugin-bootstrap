@@ -204,3 +204,61 @@ export function buildQueryIndexModel({ flags = {}, values }) {
     repo: flags.repo,
   };
 }
+
+export function buildListenerModel({ flags = {}, values }) {
+  if (!values || values.family !== "listener") {
+    throw new UsageError(
+      'the listener model requires --family "listener".',
+    );
+  }
+
+  const ingest = flags.ingest === true;
+  const retrieve = flags.retrieve === true;
+
+  if (ingest === retrieve) {
+    throw new UsageError(
+      "listener requires exactly one of --ingest or --retrieve.",
+    );
+  }
+
+  const listenerKind = ingest ? "ingest" : "retrieve";
+  const identity = deriveJavaIdentity({
+    family: "listener",
+    id: values.id,
+    listenerKind,
+    packageName: values.package,
+    typeOverride: values.type,
+  });
+  const licenseHeader = values.license
+    ? `// SPDX-License-Identifier: ${values.license}`
+    : "";
+
+  return {
+    family: "listener",
+    id: values.id,
+    name: values.name,
+    description: values.description,
+    author: values.author,
+    pluginVersion: values.pluginVersion,
+    license: values.license,
+    licenseHeader,
+    type: values.type,
+    ...identity,
+    listenerKind,
+    ingest,
+    retrieve,
+    interfaces: [
+      ingest
+        ? "StorageIngestEventListener"
+        : "StorageRetrieveEventListener",
+    ],
+    capabilities: [listenerKind],
+    enabledDefault: true,
+    matchIfMissing: true,
+    beanName: ingest ? "ingestListener" : "retrieveListener",
+    out: flags.out ?? identity.artifactId,
+    force: flags.force === true,
+    dryRun: flags.dryRun === true,
+    repo: flags.repo,
+  };
+}

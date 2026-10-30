@@ -8,7 +8,6 @@ export const JAVA_FAMILIES = Object.freeze([
   "storage",
   "query-index",
   "listener",
-  "dimse",
 ]);
 
 export const WEB_HOOKS = Object.freeze([
@@ -21,13 +20,6 @@ export const WEB_HOOKS = Object.freeze([
   "settings",
 ]);
 
-export const POLICY_TARGETS = Object.freeze([
-  "cfind",
-  "cmove",
-  "association",
-]);
-
-export const DEFAULT_POLICY_TARGET = "cfind";
 export const DEFAULT_PLUGIN_VERSION = "0.1.0";
 export const DEFAULT_AUTHOR = "Unknown";
 export const DEFAULT_API_VERSION = "1.0";
@@ -407,62 +399,6 @@ export function validateApiVersion(
   return DEFAULT_API_VERSION;
 }
 
-export function validatePolicyTargets(
-  value,
-  {
-    flag = "--policy-target",
-    fallback = [DEFAULT_POLICY_TARGET],
-  } = {},
-) {
-  if (value === undefined || value === null) {
-    return [...fallback];
-  }
-
-  const raw = String(value);
-  const targets = raw
-    .split(",")
-    .map((target) => target.trim())
-    .filter((target) => target.length > 0);
-
-  if (targets.length === 0) {
-    fail(
-      `invalid ${flag} ${quote(raw)}: at least one target is required. ` +
-        `Valid targets: ${POLICY_TARGETS.join(", ")}.`,
-    );
-  }
-
-  const unknown = targets.find(
-    (target) => !POLICY_TARGETS.includes(target),
-  );
-
-  if (unknown) {
-    fail(
-      `invalid ${flag}: unknown policy target ${quote(unknown)}. ` +
-        `Valid targets: ${POLICY_TARGETS.join(", ")}.`,
-    );
-  }
-
-  const seen = new Set();
-  const duplicates = [];
-
-  for (const target of targets) {
-    if (seen.has(target)) {
-      duplicates.push(target);
-    } else {
-      seen.add(target);
-    }
-  }
-
-  if (duplicates.length > 0) {
-    fail(
-      `invalid ${flag}: duplicate target(s) ` +
-        `${[...new Set(duplicates)].map(quote).join(", ")}.`,
-    );
-  }
-
-  return targets;
-}
-
 export function validateHooks(value, { flag = "--hooks" } = {}) {
   if (value === undefined || value === null) {
     fail(`missing required flag "${flag}"`);
@@ -520,6 +456,12 @@ export function validateFamily(value, { flag = "--family" } = {}) {
   }
 
   const raw = String(value);
+
+  if (raw === "dimse") {
+    fail(
+      `family not supported: "dimse" (DIMSE generation is descoped).`,
+    );
+  }
 
   if (!JAVA_FAMILIES.includes(raw)) {
     fail(
@@ -639,21 +581,17 @@ export function validateGenerationOptions(
       values.scheme = id;
     }
 
-    if (flags.policyTarget !== undefined) {
-      values.policyTargets = validatePolicyTargets(flags.policyTarget);
-    } else if (
-      values.family === "dimse" &&
-      flags.accessPolicy === true
-    ) {
-      values.policyTargets = [DEFAULT_POLICY_TARGET];
-    }
-
     if (values.family === "listener") {
-      if (flags.ingest === true && flags.retrieve !== true) {
-        values.listenerKind = "ingest";
-      } else if (flags.retrieve === true && flags.ingest !== true) {
-        values.listenerKind = "retrieve";
+      const ingest = flags.ingest === true;
+      const retrieve = flags.retrieve === true;
+
+      if (ingest === retrieve) {
+        throw new UsageError(
+          "listener requires exactly one of --ingest or --retrieve.",
+        );
       }
+
+      values.listenerKind = ingest ? "ingest" : "retrieve";
     }
 
     if (values.family === "query-index") {

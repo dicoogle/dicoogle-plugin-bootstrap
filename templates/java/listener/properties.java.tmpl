@@ -1,0 +1,21 @@
+{{#if licenseHeader}}{{licenseHeader}}
+
+{{/if}}package {{package}};
+
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+{{#if propertiesAnnotationOneLine}}@ConfigurationProperties(prefix = "{{configPrefix}}")
+{{/if}}{{#unless propertiesAnnotationOneLine}}@ConfigurationProperties(
+    prefix = "{{configPrefix}}")
+{{/unless}}public class {{ClassName}}Properties {
+
+  private boolean enabled = {{enabledDefault}};
+
+  public boolean isEnabled() {
+    return enabled;
+  }
+
+  public void setEnabled(boolean enabled) {
+    this.enabled = enabled;
+  }
+}

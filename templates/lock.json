@@ -165,6 +165,69 @@
         "package",
         "propertiesAnnotationOneLine"
       ]
+    },
+    "java/listener/pom.xml.tmpl": {
+      "source": "internal:java/listener/pom.xml.tmpl",
+      "sha256": "6f2b7c544ef1728d4206a5127cd74a50199940c5dac432348167e8c97514821f",
+      "placeholders": [
+        "artifactId",
+        "descriptionXml",
+        "nameXml",
+        "parentArtifactId",
+        "parentGroupId",
+        "parentVersion",
+        "sdkArtifactId"
+      ]
+    },
+    "java/listener/README.md.tmpl": {
+      "source": "internal:java/listener/README.md.tmpl",
+      "sha256": "97b96c401f6fde2f04e1d818c97455acc909db182c3e1ce9a08a3d0e75b1acf9",
+      "placeholders": [
+        "artifactId",
+        "commit",
+        "configFamily",
+        "configPrefix",
+        "description",
+        "enabledDefault",
+        "id",
+        "ingest",
+        "javaVersion",
+        "licenseSpdx",
+        "mavenMinimum",
+        "name",
+        "package",
+        "parentVersion",
+        "pluginType",
+        "retrieve",
+        "sdkVersion",
+        "springBootVersion"
+      ]
+    },
+    "java/listener/config.java.tmpl": {
+      "source": "internal:java/listener/config.java.tmpl",
+      "sha256": "12048d0ed5c05aafded78d14222ca07d634e2df876d3a0bdfb5bc4aa43a50972",
+      "placeholders": [
+        "ClassName",
+        "beanName",
+        "configPrefix",
+        "enablePropertiesOneLine",
+        "licenseHeader",
+        "listenerMethodOneLine",
+        "matchIfMissing",
+        "package"
+      ]
+    },
+    "java/listener/properties.java.tmpl": {
+      "source": "internal:java/listener/properties.java.tmpl",
+      "sha256": "17725f49d6ca84ccda2952d744d81795120be4cb6b76e6e4157f4f11c6792e1e",
+      "placeholders": [
+        "ClassName",
+        "configPrefix",
+        "enabledDefault",
+        "licenseHeader",
+        "package",
+        "propertiesAnnotationOneLine"
+      ]
     }
   }
 }

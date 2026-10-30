@@ -4,12 +4,15 @@ import path from "node:path";
 import { TemplateLockError, DEFAULT_TEMPLATES_DIR } from "./lock.mjs";
 import { renderTemplate } from "./render.mjs";
 import {
+  composeListenerClass,
+  composeListenerTest,
   composeQueryIndexClass,
   composeQueryIndexTest,
   composeStorageClass,
   composeStorageTest,
   validateJavaSource,
 } from "./java/compose.mjs";
+import { expectedListenerMethods } from "./java/fragments/listener/index.mjs";
 import { expectedQueryIndexMethods } from "./java/fragments/query-index/index.mjs";
 import { expectedStorageMethods } from "./java/fragments/storage/index.mjs";
 
@@ -187,6 +190,87 @@ export function buildQueryIndexPlan(model, lock) {
   };
 }
 
+export function buildListenerData(model, lock) {
+  const pin = lock.dicoogleNext;
+
+  return {
+    ...model,
+    ...pin,
+    ingest: model.ingest,
+    retrieve: model.retrieve,
+    listenerKind: model.listenerKind,
+    beanName: model.beanName,
+    configFamily: model.domain,
+    nameXml: escapeXml(model.name),
+    descriptionXml: escapeXml(model.description),
+    enablePropertiesOneLine:
+      `@EnableConfigurationProperties(${model.className}Properties.class)`.length <= 100,
+    listenerMethodOneLine:
+      `  ${model.className} ${model.beanName}() {`.length <= 100,
+    propertiesAnnotationOneLine:
+      `@ConfigurationProperties(prefix = "${model.configPrefix}")`.length <= 100,
+    licenseHeader: model.licenseHeader,
+    licenseSpdx: model.license ?? "",
+    enabledDefault: model.enabledDefault,
+    matchIfMissing: model.matchIfMissing,
+    ClassName: model.className,
+    className: model.className,
+  };
+}
+
+export function buildListenerPlan(model, lock) {
+  const data = buildListenerData(model, lock);
+  const mainClassPath =
+    `src/main/java/${model.packagePath}/${model.className}.java`;
+  const testClassPath =
+    `src/test/java/${model.packagePath}/${model.className}Test.java`;
+  const files = [
+    {
+      path: "pom.xml",
+      kind: "template",
+      template: "java/listener/pom.xml.tmpl",
+      data,
+    },
+    {
+      path: "README.md",
+      kind: "template",
+      template: "java/listener/README.md.tmpl",
+      data,
+    },
+    {
+      path: mainClassPath,
+      kind: "listener-class",
+      data,
+    },
+    {
+      path: `src/main/java/${model.packagePath}/${model.className}Config.java`,
+      kind: "template",
+      template: "java/listener/config.java.tmpl",
+      data,
+    },
+    {
+      path: `src/main/java/${model.packagePath}/${model.className}Properties.java`,
+      kind: "template",
+      template: "java/listener/properties.java.tmpl",
+      data,
+    },
+    {
+      path: testClassPath,
+      kind: "listener-test",
+      data,
+    },
+  ];
+
+  return {
+    root: model.out,
+    family: "listener",
+    model,
+    lock,
+    data,
+    files,
+  };
+}
+
 function readTemplateFile(templatesDir, templatePath) {
   try {
     return readFileSync(
@@ -282,6 +366,7 @@ function validateMaterializedPlan(plan, files) {
 
     const isStorageClass = file.kind === "storage-class";
     const isQueryIndexClass = file.kind === "query-index-class";
+    const isListenerClass = file.kind === "listener-class";
 
     validateJavaSource({
       content,
@@ -291,9 +376,11 @@ function validateMaterializedPlan(plan, files) {
         ? expectedStorageMethods(plan.model)
         : isQueryIndexClass
           ? expectedQueryIndexMethods(plan.model)
-          : [],
+          : isListenerClass
+            ? expectedListenerMethods(plan.model)
+            : [],
       interfaces:
-        isStorageClass || isQueryIndexClass
+        isStorageClass || isQueryIndexClass || isListenerClass
           ? plan.model.interfaces
           : [],
     });
@@ -325,6 +412,10 @@ export function materializePlan(
       content = composeQueryIndexClass(plan.model, entry.data);
     } else if (entry.kind === "query-index-test") {
       content = composeQueryIndexTest(plan.model, entry.data);
+    } else if (entry.kind === "listener-class") {
+      content = composeListenerClass(plan.model, entry.data);
+    } else if (entry.kind === "listener-test") {
+      content = composeListenerTest(plan.model, entry.data);
     } else {
       throw new TemplateLockError(
         `unknown plan entry kind "${entry.kind}" for ${entry.path}`,
