@@ -8,10 +8,10 @@ import {
   formatError,
   normalizeError,
 } from "./errors.mjs";
+import { loadLock } from "./lock.mjs";
 import { validateGenerationOptions } from "./validate.mjs";
 
 const PACKAGE_JSON_URL = new URL("../package.json", import.meta.url);
-const TEMPLATE_LOCK_URL = new URL("../templates/lock.json", import.meta.url);
 
 const packageJson = JSON.parse(readFileSync(PACKAGE_JSON_URL, "utf8"));
 
@@ -84,26 +84,7 @@ export function installSigintHandler(target = process) {
   return handler;
 }
 
-function readTemplateLock() {
-  try {
-    return JSON.parse(readFileSync(TEMPLATE_LOCK_URL, "utf8"));
-  } catch (error) {
-    if (error && error.code === "ENOENT") {
-      return null;
-    }
-
-    throw new CliError(
-      "Template lock could not be read: templates/lock.json",
-      { exitCode: EXIT_CODES.TEMPLATE, cause: error },
-    );
-  }
-}
-
 function lockLines(lock, label) {
-  if (!lock) {
-    return [`${label}: not found (templates/lock.json)`];
-  }
-
   const pin = lock.dicoogleNext ?? {};
   const commit = pin.commit ?? "unknown commit";
   const branch = pin.branchAtPin ?? "unknown branch";
@@ -169,11 +150,11 @@ export async function main(
 
     switch (parsed.command) {
       case "version": {
-        io.stdout.write(formatVersion(readTemplateLock()));
+        io.stdout.write(formatVersion(loadLock()));
         return EXIT_CODES.OK;
       }
       case "list": {
-        io.stdout.write(formatList(readTemplateLock()));
+        io.stdout.write(formatList(loadLock()));
         return EXIT_CODES.OK;
       }
       case "init":
