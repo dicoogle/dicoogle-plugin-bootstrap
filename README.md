@@ -105,6 +105,12 @@ and visibility as the list types consumed by the app (`QueryService`,
 `QueryMoveService`, `StorageIngestEventListener`, `QueryIndexMaintenance`,
 `QueryIndexSettings`).
 
+`--settings` prints a displacement warning in the README, `--help`, and CLI
+stderr: `IndexSettingsController` selects the first `QueryIndexSettings`
+provider, so a default-enabled generated plugin can displace Lucene's provider;
+set `enabled=false` or disable the other provider. Generated tests also assert
+`start()` and `stop()` run exactly once.
+
 ## Template lock
 
 `templates/lock.json` is the single pin file. It fixes the dicoogle-next commit

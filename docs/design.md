@@ -1182,3 +1182,60 @@ Implementation notes:
   config prefix template, metadata type, and class suffix against
   `src/naming.mjs`. The lock is the pinned data source; naming.mjs is the
   executable contract.
+
+---
+
+## Addendum B — Query-index follow-up evidence (milestone 6)
+
+### Long-id matrix case
+
+The canonical plugin id is limited to 64 characters (§5.1), and the query-index
+class suffix is `QueryIndexPlugin` (16 characters). A generated Java **simple
+class name** therefore cannot exceed 80 characters. The literal requirement
+“class name exceeds 100 columns” is impossible under the current id rule.
+
+The fixture matrix therefore uses
+`fixture-query-index-long-ident` (30 characters, generated class name
+`FixtureQueryIndexLongIdentQueryIndexPlugin`). It is long enough to force
+Google-Java-Format line wrapping in the class declaration, constructor, context
+tests, and configuration. It is a permanent case in
+`scripts/build-fixtures.mjs` and passes `spotless:check`, generated tests, and
+the no-rewrite hash check.
+
+### Settings displacement warning
+
+`--settings` emits a warning in the generated README, `--help`, and CLI stderr:
+
+> `IndexSettingsController` selects the FIRST `QueryIndexSettings` provider
+> (`IndexSettingsController.java:25-31`), so a default-enabled generated plugin
+> can displace Lucene's provider once wired. Set `enabled=false` or disable the
+> other provider.
+
+The warning is intentionally conservative. In a temp checkout at the pinned
+commit with the all-flags query-index module wired next to Lucene, a focused
+probe test observed Lucene as the selected provider in three consecutive runs
+(`org.dicoogle.query.lucene.LuceneQueryIndexPlugin`, index path
+`./target/test-index`). Lucene's config is ordered with `@Order(0)`
+(`LuceneQueryConfig.java:16`), so it currently wins list ordering. Bean ordering
+is not a stable contract; the warning remains valid for other provider sets,
+orders, or future changes.
+
+### Registry and routing evidence
+
+Probe results in the temp app (filtered to fixture ids):
+
+| Case | `PluginRegistry` | `QueryRouter` query list | `QueryRouter` move list | Ingest listener list | Selected settings provider |
+|---|---|---|---|---|---|
+| `--ingest` only | `fixture-ing` | empty | empty | `fixture-ing` | Lucene |
+| `--query` only | `fixture-qry` | `fixture-qry` | empty | empty | Lucene |
+| all flags | `fixture-qall` | `fixture-qall` | `fixture-qall` | `fixture-qall` | Lucene |
+
+The plugin is registered wherever the code consumes the corresponding list. It
+is not present in lists for capabilities it does not implement.
+
+### Lifecycle evidence
+
+Generated query-index tests use `ApplicationContextRunner` with the generated
+config. They assert `startCount() == 1` after context refresh and
+`stopCount() == 1` after context close, proving `@Bean(initMethod="start",
+destroyMethod="stop")` is wired exactly once.
