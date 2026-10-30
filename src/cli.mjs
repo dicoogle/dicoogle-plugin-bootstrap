@@ -54,8 +54,10 @@ Java flags:
   storage:     --readable --writable --listable --locator
   query-index: --ingest --query --move --maintenance --settings
                warning: IndexSettingsController selects the FIRST QueryIndexSettings
-               provider (IndexSettingsController.java:25-31); set enabled=false or
-               disable the other provider to avoid displacement.
+               provider (IndexSettingsController.java:25-31). Currently Lucene wins
+               because LuceneQueryConfig has @Order(0) (LuceneQueryConfig.java:16),
+               but ordering is not a stable contract; set enabled=false on one of
+               them to be safe.
   listener:    --ingest | --retrieve
   dimse:       --access-policy [--policy-target cfind,cmove,association]
                | --association-listener
@@ -161,11 +163,13 @@ export async function main(
 
     if (parsed.command === "java" && parsed.flags.settings === true) {
       io.stderr.write(
-        "warning: --settings adds a QueryIndexSettings provider; " +
+        "warning: --settings adds a QueryIndexSettings provider. " +
           "IndexSettingsController selects the FIRST provider " +
-          "(IndexSettingsController.java:25-31), so a default-enabled " +
-          "generated plugin can displace Lucene's provider once wired. " +
-          "Set enabled=false or disable the other provider.\n",
+          "(IndexSettingsController.java:25-31). Currently Lucene wins " +
+          "because LuceneQueryConfig has @Order(0) " +
+          "(LuceneQueryConfig.java:16), but bean ordering is not a stable " +
+          "contract, so a default-enabled generated provider could take over " +
+          "if ordering changes. Set enabled=false on one of them to be safe.\n",
       );
     }
 

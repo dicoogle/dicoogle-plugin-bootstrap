@@ -34,9 +34,11 @@ app:
 {{#if settings}}
 > **Warning:** `--settings` adds a `QueryIndexSettings` provider.
 > `IndexSettingsController` selects the **first** provider
-> (`IndexSettingsController.java:25-31`), so a default-enabled generated plugin
-> can displace Lucene's provider once wired. Set `enabled=false` for one of them
-> or disable the other.
+> (`IndexSettingsController.java:25-31`). Currently Lucene wins because
+> `LuceneQueryConfig` has `@Order(0)` (`LuceneQueryConfig.java:16`), but bean
+> ordering is not a stable contract, so a default-enabled generated provider
+> could take over if ordering changes. Set `enabled=false` on one of them to be
+> safe.
 {{/if}}
 ## Build
 

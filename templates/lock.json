@@ -116,7 +116,7 @@
     },
     "java/query-index/README.md.tmpl": {
       "source": "internal:java/query-index/README.md.tmpl",
-      "sha256": "bdb0666e8555d5fcb525180e5c34ca181903edbbbe0e73375d7ccfd0b3aac101",
+      "sha256": "ef901d42feb7389a9c21b68fe28aeba63004b972e4f0722aef15e975ee74b91c",
       "placeholders": [
         "artifactId",
         "commit",
