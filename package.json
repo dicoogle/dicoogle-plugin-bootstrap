@@ -1,0 +1,25 @@
+{
+  "name": "dicoogle-plugin-bootstrap",
+  "version": "0.1.0",
+  "description": "Zero-dependency CLI that generates dicoogle-next plugin boilerplate.",
+  "type": "module",
+  "bin": {
+    "dicoogle-plugin-bootstrap": "./bin/dicoogle-plugin-bootstrap.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node bin/dicoogle-plugin-bootstrap.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:cli": "node --test test/cli.test.mjs"
+  },
+  "keywords": [
+    "dicoogle",
+    "dicoogle-next",
+    "plugin",
+    "bootstrap",
+    "cli"
+  ],
+  "license": "GPL-3.0-only"
+}
