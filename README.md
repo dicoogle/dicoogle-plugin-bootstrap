@@ -3,10 +3,10 @@
 Zero-dependency Node ESM CLI that generates plugin boilerplate for
 [dicoogle-next](https://github.com/dicoogle/dicoogle-next).
 
-> **Status:** milestone 5 (Java storage templates and compile fixture). The
-> `java --family storage` command generates a working, Google-Java-Format-clean
-> Maven module with Spring context tests, safe writes, and dry-run support.
-> Other Java families, `web`, and `init` are still stubs.
+> **Status:** milestone 6 (query-index family). The `java` command generates
+> working, Google-Java-Format-clean storage and query-index Maven modules with
+> Spring context tests, safe writes, and dry-run support. Listener, DIMSE,
+> `web`, and `init` are still stubs.
 
 ## Requirements
 
@@ -29,7 +29,7 @@ After `npm link`, the same commands are available as
 | Command | Description |
 |---|---|
 | `init` | Interactive wizard (not implemented) |
-| `java` | Generate a Java module; storage is implemented, other families are stubs |
+| `java` | Generate a Java module; storage and query-index are implemented |
 | `web` | Validate input and derive web naming (generation not implemented yet) |
 | `list` | Show supported families, web hooks, and the verified template pin |
 | `version` | Show tool, Node, and verified template-lock versions |
@@ -82,6 +82,29 @@ forced, refuse the filesystem root and regular-file targets, and refuse symlink
 components under `--out`. Parent POM conflicts (`../../pom.xml` with the wrong
 GAV) exit `2`.
 
+
+## Query-index generation
+
+```bash
+node bin/dicoogle-plugin-bootstrap.mjs java \
+  --id my-index --family query-index \
+  --ingest --query --move --maintenance --settings \
+  --out /tmp/dicoogle-next-query-my-index
+```
+
+Query-index capabilities map to `StorageIngestEventListener`, `QueryService`,
+`QueryMoveService`, `QueryIndexMaintenance`, and `QueryIndexSettings`.
+At least one capability is required; no flags exits `2`. `--settings` alone adds
+the `QueryIndexPlugin` marker, `--maintenance` already extends it, and
+`--locator` exits `2`. `indexId()` defaults to the plugin id. The config uses
+`@Bean(initMethod = "start", destroyMethod = "stop")` with
+`@ConditionalOnProperty(..., matchIfMissing = true)`.
+
+Generated tests cover the in-memory working stubs, Spring context registration,
+and visibility as the list types consumed by the app (`QueryService`,
+`QueryMoveService`, `StorageIngestEventListener`, `QueryIndexMaintenance`,
+`QueryIndexSettings`).
+
 ## Template lock
 
 `templates/lock.json` is the single pin file. It fixes the dicoogle-next commit
@@ -103,9 +126,9 @@ npm run verify:templates
 node scripts/verify-templates.mjs --lock templates/lock.json --templates templates
 ```
 
-Template bodies currently cover storage POM, README, config, and properties
-files. The plugin class and test are composed from pinned fragments. Larger
-template sets arrive in later milestones.
+Template bodies currently cover storage and query-index POM, README, config, and
+properties files. Plugin classes and tests are composed from pinned fragments.
+Listener and DIMSE templates arrive in later milestones.
 
 ## Exit codes
 
@@ -134,13 +157,16 @@ node --test test/model.test.mjs
 node --test test/plan.test.mjs
 node --test test/fs.test.mjs
 node --test test/parent.test.mjs
+node --test test/query-index-model.test.mjs
+node --test test/query-index-plan.test.mjs
 ```
 
 The CLI has no runtime dependencies. The parser, validation, naming, renderer,
 lock verification, filesystem safety, and tests use only Node built-ins.
 
 Build the full Java fixture matrix (temp clone, parent/SDK install, all storage
-cases, Spotless check, tests, no-rewrite hash check, full reactor, standalone):
+and query-index cases, Spotless check, tests, no-rewrite hash check, full
+reactor, standalone builds):
 
 ```bash
 node scripts/build-fixtures.mjs --repo /path/to/dicoogle-next --keep
@@ -149,7 +175,7 @@ node scripts/build-fixtures.mjs --repo /path/to/dicoogle-next --keep
 ## Design
 
 The authoritative design is [`docs/design.md`](docs/design.md), including
-Addendum A for listener identity. Storage generation, the renderer, lock
-verification, dry-run/safe-write tooling, and the Java compile fixture are
-implemented; other Java families, web generation, and the interactive wizard
-remain.
+Addendum A for listener identity. Storage and query-index generation, the
+renderer, lock verification, dry-run/safe-write tooling, and the Java compile
+fixture are implemented; listener/DIMSE, web generation, and the interactive
+wizard remain.

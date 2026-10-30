@@ -418,7 +418,7 @@ Storage class composition:
 | `.../{{ClassName}}.java` | `backend/plugins/dicoogle-next-query-file/src/main/java/org/dicoogle/query/file/FileQueryIndexPlugin.java:46-488`; full-featured methods from `.../dicoogle-next-query-lucene/.../LuceneQueryIndexPlugin.java:60-430` | Fragments: ingest, query, move, maintenance, settings. |
 | `.../{{ClassName}}Config.java` | `.../dicoogle-next-query-lucene/.../LuceneQueryConfig.java:11-25` | Always; uses `@Bean(initMethod = "start", destroyMethod = "stop")` and `@EnableConfigurationProperties`. |
 | `.../{{ClassName}}Properties.java` | `.../dicoogle-next-query-lucene/.../LuceneQueryProperties.java:5-70` | Always; simplified to `enabled`, `rootDir`, `indexName`, `watchEnabled`. |
-| `src/test/java/.../{{ClassName}}Test.java` | `.../dicoogle-next-query-file/src/test/java/.../FileReadWriteDimseFindPluginTest.java:24-100`; `.../dicoogle-next-query-lucene/src/test/java/.../LuceneQueryIndexPluginTest.java:29-104` | Always; `@TempDir`, direct instantiation, metadata, and one passing test per selected capability. The stub uses an in-memory index; ingest/query/move/maintenance/settings tests exercise real stub behavior, not throwing placeholders. |
+| `src/test/java/.../{{ClassName}}Test.java` | `.../dicoogle-next-query-file/src/test/java/.../FileReadWriteDimseFindPluginTest.java:24-100`; `.../dicoogle-next-query-lucene/src/test/java/.../LuceneQueryIndexPluginTest.java:29-104` | Always; `@TempDir`, direct instantiation, metadata, and one passing test per selected capability. The stub uses an in-memory index; ingest/query/move/maintenance/settings tests exercise real stub behavior, not throwing placeholders. Includes `ApplicationContextRunner` checks for `enabled=true`/`enabled=false` and verifies the bean is visible as `StorageIngestEventListener`, `QueryService`, `QueryMoveService`, `QueryIndexMaintenance`, or `QueryIndexSettings` where applicable. |
 | `README.md` | New template | Always; YAML, semantics, TODO. |
 
 Query-index composition:
@@ -430,6 +430,7 @@ Query-index composition:
 - `--settings` → `QueryIndexSettings` (`getIndexPath`, `setIndexPath`, `isWatchEnabled`, `setWatchEnabled`) plus the `QueryIndexPlugin` marker if no other query-index capability is selected.
 - At least one flag is required. Empty selection is exit `2`.
 - `--locator` is always rejected with exit `2` and the message that only storage plugins feed `List<DicomInstanceLocator>` (D1). There is no compatibility flag in v1.
+- `QueryIndexMaintenance.indexId()` defaults to the validated plugin id so generated indexes are unique by default.
 - Every selected method body is a minimal working in-memory implementation per §3.10; no exercised method throws.
 
 ### 3.5 Java listener files
@@ -770,7 +771,7 @@ Dependencies by family:
 | Family | Compile | Test |
 |---|---|---|
 | storage | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `spring-boot-test`; `assertj-core` (required to compile `ApplicationContextRunner` use) |
-| query-index | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `dcm4che-core` test scope when tests build `Attributes` |
+| query-index | SDK; `dcm4che-core`; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `spring-boot-test`; `assertj-core` |
 | listener | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter` |
 | dimse | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `dcm4che-core` test scope for policy request tests |
 
