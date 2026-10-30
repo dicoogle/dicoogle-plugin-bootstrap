@@ -150,18 +150,89 @@ test("query-index --locator is rejected with exit 2", async () => {
 });
 
 test("storage --locator remains valid", async () => {
-  const result = await run(["java", "--family", "storage", "--locator"]);
+  const result = await run([
+    "java",
+    "--id",
+    "my-plugin",
+    "--family",
+    "storage",
+    "--locator",
+  ]);
 
   assert.equal(result.code, EXIT_CODES.OK);
   assert.match(result.stdout, /not implemented yet/);
 });
 
-test("java/web/init are recognized but not implemented", async () => {
-  for (const command of ["java", "web", "init"]) {
-    const result = await run([command]);
+test("valid java/web/init are recognized but not implemented", async () => {
+  const cases = [
+    ["java", "--id", "my-plugin", "--family", "storage"],
+    ["web", "--id", "my-plugin", "--hooks", "route"],
+    ["init"],
+  ];
+
+  for (const argv of cases) {
+    const result = await run(argv);
     assert.equal(result.code, EXIT_CODES.OK);
     assert.match(result.stdout, /not implemented yet/);
   }
+});
+
+test("java missing required flags exits 2 before generation", async () => {
+  const missingId = await run(["java", "--family", "storage"]);
+  assert.equal(missingId.code, EXIT_CODES.USAGE);
+  assert.match(missingId.stderr, /missing required flag "--id"/);
+
+  const missingFamily = await run(["java", "--id", "my-plugin"]);
+  assert.equal(missingFamily.code, EXIT_CODES.USAGE);
+  assert.match(missingFamily.stderr, /missing required flag "--family"/);
+
+  const missingHooks = await run(["web", "--id", "my-plugin"]);
+  assert.equal(missingHooks.code, EXIT_CODES.USAGE);
+  assert.match(missingHooks.stderr, /missing required flag "--hooks"/);
+});
+
+test("invalid ids exit 2 with a suggested valid form", async () => {
+  const result = await run([
+    "java",
+    "--id",
+    "../My Plugin",
+    "--family",
+    "storage",
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /invalid plugin id/);
+  assert.match(result.stderr, /Suggested: "my-plugin"/);
+  assert.doesNotMatch(result.stdout, /not implemented yet/);
+});
+
+test("invalid web hooks exit 2 before generation", async () => {
+  const result = await run([
+    "web",
+    "--id",
+    "my-plugin",
+    "--hooks",
+    "route,bogus",
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /unknown hook "bogus"/);
+  assert.doesNotMatch(result.stdout, /not implemented yet/);
+});
+
+test("invalid api-version exits 2", async () => {
+  const result = await run([
+    "web",
+    "--id",
+    "my-plugin",
+    "--hooks",
+    "route",
+    "--api-version",
+    "2.0",
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /only "1" or "1.0"/);
 });
 
 test("Node < 20 throws exit code 7 and Node >= 20 passes", () => {
