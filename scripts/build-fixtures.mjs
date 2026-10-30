@@ -31,7 +31,7 @@ const CLI = path.join(
   "dicoogle-plugin-bootstrap.mjs",
 );
 
-const CASES = [
+const STORAGE_CASES = [
   { name: "readable", id: "fixture-r", flags: ["--readable"] },
   { name: "writable", id: "fixture-w", flags: ["--writable"] },
   { name: "listable", id: "fixture-l", flags: ["--listable"] },
@@ -54,6 +54,29 @@ const CASES = [
       "--writable",
       "--listable",
       "--locator",
+    ],
+  },
+];
+
+const QUERY_INDEX_CASES = [
+  { name: "ingest", id: "fixture-ing", flags: ["--ingest"] },
+  { name: "query", id: "fixture-qry", flags: ["--query"] },
+  { name: "move", id: "fixture-mv", flags: ["--move"] },
+  {
+    name: "maintenance",
+    id: "fixture-mnt",
+    flags: ["--maintenance"],
+  },
+  { name: "settings", id: "fixture-set", flags: ["--settings"] },
+  {
+    name: "all",
+    id: "fixture-qall",
+    flags: [
+      "--ingest",
+      "--query",
+      "--move",
+      "--maintenance",
+      "--settings",
     ],
   },
 ];
@@ -252,19 +275,21 @@ function assertNoRewrite(before, after, label) {
   }
 }
 
-function runStorageCase(
+function runCase(
+  family,
   testCase,
   {
     backendDir,
     mvnw,
     backendPom,
-    appPom,
   },
 ) {
-  const artifactId = `dicoogle-next-storage-${testCase.id}`;
+  const prefix =
+    family === "storage" ? "dicoogle-next-storage" : "dicoogle-next-query";
+  const artifactId = `${prefix}-${testCase.id}`;
   const outputDir = path.join(backendDir, "plugins", artifactId);
 
-  console.log(`\n=== storage case: ${testCase.name} ===`);
+  console.log(`\n=== ${family} case: ${testCase.name} ===`);
 
   run(
     process.execPath,
@@ -274,7 +299,7 @@ function runStorageCase(
       "--id",
       testCase.id,
       "--family",
-      "storage",
+      family,
       ...testCase.flags,
       "--out",
       outputDir,
@@ -283,7 +308,6 @@ function runStorageCase(
   );
 
   addModule(backendPom, `plugins/${artifactId}`);
-  addAppDependency(appPom, artifactId);
 
   run(
     mvnw,
@@ -387,14 +411,30 @@ function main() {
       { cwd: backendDir },
     );
 
-    for (const testCase of CASES) {
-      runStorageCase(testCase, {
+    for (const testCase of STORAGE_CASES) {
+      runCase("storage", testCase, {
         backendDir,
         mvnw,
         backendPom,
-        appPom,
       });
     }
+
+    for (const testCase of QUERY_INDEX_CASES) {
+      runCase("query-index", testCase, {
+        backendDir,
+        mvnw,
+        backendPom,
+      });
+    }
+
+    addAppDependency(
+      appPom,
+      "dicoogle-next-storage-fixture-all",
+    );
+    addAppDependency(
+      appPom,
+      "dicoogle-next-query-fixture-qall",
+    );
 
     console.log("\n=== full reactor clean verify ===");
     run(mvnw, ["-B", "-ntp", "clean", "verify"], {
@@ -429,8 +469,37 @@ function main() {
       cwd: standaloneOut,
     });
 
+    const queryStandaloneOut = path.join(
+      runRoot,
+      "standalone",
+      "dicoogle-next-query-fixture-standalone",
+    );
+    run(
+      process.execPath,
+      [
+        CLI,
+        "java",
+        "--id",
+        "fixture-standalone-q",
+        "--family",
+        "query-index",
+        "--ingest",
+        "--query",
+        "--move",
+        "--maintenance",
+        "--settings",
+        "--out",
+        queryStandaloneOut,
+      ],
+      { cwd: TOOL_ROOT },
+    );
+    run("mvn", ["-B", "-ntp", "spotless:check", "test"], {
+      cwd: queryStandaloneOut,
+    });
+
     console.log(
-      "\nAll storage fixture cases, full reactor, and standalone build passed.",
+      "\nAll storage and query-index fixture cases, full reactor, and " +
+        "standalone builds passed.",
     );
 
     if (options.keep) {
