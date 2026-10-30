@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
@@ -149,7 +152,7 @@ test("query-index --locator is rejected with exit 2", async () => {
   assert.match(result.stderr, /only storage plugins/);
 });
 
-test("storage --locator remains valid", async () => {
+test("storage --locator dry-run remains valid", async () => {
   const result = await run([
     "java",
     "--id",
@@ -157,15 +160,36 @@ test("storage --locator remains valid", async () => {
     "--family",
     "storage",
     "--locator",
+    "--dry-run",
   ]);
 
   assert.equal(result.code, EXIT_CODES.OK);
-  assert.match(result.stdout, /not implemented yet/);
+  assert.match(result.stdout, /dicoogle-next-storage-my-plugin\//);
 });
 
-test("valid java/web/init are recognized but not implemented", async () => {
+
+test("storage generation refuses a non-empty target with exit 3", async (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), "dicoogle-cli-target-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+  writeFileSync(path.join(dir, "existing.txt"), "keep\n");
+
+  const result = await run([
+    "java",
+    "--id",
+    "my-store",
+    "--family",
+    "storage",
+    "--out",
+    dir,
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.TARGET_NOT_EMPTY);
+  assert.match(result.stderr, /target directory is not empty/);
+});
+
+test("non-storage java, web, and init are still stubs", async () => {
   const cases = [
-    ["java", "--id", "my-plugin", "--family", "storage"],
+    ["java", "--id", "my-plugin", "--family", "query-index"],
     ["web", "--id", "my-plugin", "--hooks", "route"],
     ["init"],
   ];

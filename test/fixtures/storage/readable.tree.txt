@@ -1,0 +1,7 @@
+dicoogle-next-storage-my-store/
+  pom.xml
+  README.md
+  src/main/java/org/dicoogle/storage/mystore/MyStoreStoragePlugin.java
+  src/main/java/org/dicoogle/storage/mystore/MyStoreStoragePluginConfig.java
+  src/main/java/org/dicoogle/storage/mystore/MyStoreStoragePluginProperties.java
+  src/test/java/org/dicoogle/storage/mystore/MyStoreStoragePluginTest.java
