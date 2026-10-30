@@ -159,8 +159,9 @@ export function writePlan({ out, files, force = false }) {
         );
       }
 
-      throw new UsageError(
+      throw new CliError(
         `cannot write ${file.path}: ${error.message}`,
+        { exitCode: EXIT_CODES.INTERNAL, cause: error },
       );
     }
   }
