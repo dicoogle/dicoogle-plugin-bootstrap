@@ -12,7 +12,8 @@
   "scripts": {
     "start": "node bin/dicoogle-plugin-bootstrap.mjs",
     "test": "node --test test/*.test.mjs",
-    "test:cli": "node --test test/cli.test.mjs"
+    "test:cli": "node --test test/cli.test.mjs",
+    "verify:templates": "node scripts/verify-templates.mjs"
   },
   "keywords": [
     "dicoogle",

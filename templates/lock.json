@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "generatedBy": "dicoogle-plugin-bootstrap",
+  "dicoogleNext": {
+    "repository": "https://github.com/dicoogle/dicoogle-next",
+    "commit": "cdfbff7f601d663453b9b7b77d6d3dc70af1b822",
+    "branchAtPin": "feat/dissertation-frame-baseline",
+    "javaVersion": "21",
+    "mavenMinimum": "3.9.12",
+    "springBootVersion": "4.0.3",
+    "parentGroupId": "org.dicoogle",
+    "parentArtifactId": "dicoogle-next-backend-parent",
+    "parentVersion": "0.0.1-SNAPSHOT",
+    "sdkArtifactId": "dicoogle-next-sdk",
+    "sdkVersion": "0.0.1-SNAPSHOT",
+    "dcm4cheVersion": "5.34.0",
+    "webApiVersion": "1.0"
+  },
+  "listenerIdentities": {
+    "ingest": {
+      "domain": "query",
+      "package": "org.dicoogle.query.<id-without-hyphens>",
+      "artifactId": "dicoogle-next-query-<id>",
+      "configPrefix": "app.query.<id>",
+      "pluginType": "query-index",
+      "classSuffix": "IngestListener"
+    },
+    "retrieve": {
+      "domain": "service",
+      "package": "org.dicoogle.service.<id-without-hyphens>",
+      "artifactId": "dicoogle-next-service-<id>",
+      "configPrefix": "app.service.<id>",
+      "pluginType": "service",
+      "classSuffix": "RetrieveListener"
+    }
+  },
+  "templates": {
+    "stubs/lock-smoke.txt.tmpl": {
+      "source": "stubs/lock-smoke.txt.tmpl",
+      "sha256": "d57d1d243e8f6bb3fe7a3e7fdae8d32afd9084fb8a86ef6e650d958d9d0b89ba",
+      "placeholders": [
+        "description",
+        "id",
+        "name"
+      ]
+    }
+  }
+}
