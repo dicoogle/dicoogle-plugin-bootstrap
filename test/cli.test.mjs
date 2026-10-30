@@ -1,0 +1,219 @@
+import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
+import test from "node:test";
+import { fileURLToPath } from "node:url";
+
+import {
+  HELP_TEXT,
+  TOOL_VERSION,
+  assertSupportedNode,
+  installSigintHandler,
+  main,
+} from "../src/cli.mjs";
+import { EXIT_CODES } from "../src/errors.mjs";
+
+const BIN = fileURLToPath(
+  new URL("../bin/dicoogle-plugin-bootstrap.mjs", import.meta.url),
+);
+
+async function run(argv) {
+  let stdout = "";
+  let stderr = "";
+
+  const code = await main(argv, {
+    stdout: {
+      write(chunk) {
+        stdout += String(chunk);
+      },
+    },
+    stderr: {
+      write(chunk) {
+        stderr += String(chunk);
+      },
+    },
+  });
+
+  return { code, stdout, stderr };
+}
+
+test("--help prints usage and exits 0", async () => {
+  const result = await run(["--help"]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.equal(result.stderr, "");
+  assert.match(result.stdout, /^Usage: dicoogle-plugin-bootstrap <command>/);
+  assert.match(result.stdout, /Commands:/);
+  assert.match(result.stdout, /Exit codes:/);
+});
+
+test("-h prints usage and exits 0", async () => {
+  const result = await run(["-h"]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.equal(result.stdout, HELP_TEXT);
+});
+
+test("no arguments prints usage and exits 0", async () => {
+  const result = await run([]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.equal(result.stdout, HELP_TEXT);
+});
+
+test("java --help prints usage instead of the milestone stub", async () => {
+  const result = await run(["java", "--help"]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.equal(result.stdout, HELP_TEXT);
+});
+
+test("version prints tool, Node, and lock status", async () => {
+  const result = await run(["version"]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.match(
+    result.stdout,
+    new RegExp(`dicoogle-plugin-bootstrap ${TOOL_VERSION.replaceAll(".", "\\.")}`),
+  );
+  assert.match(result.stdout, new RegExp(`node ${process.versions.node.replaceAll(".", "\\.")}`));
+  assert.match(result.stdout, /template lock:/);
+});
+
+test("list prints families, hooks, and lock status", async () => {
+  const result = await run(["list"]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.match(result.stdout, /Java families:/);
+  assert.match(result.stdout, /storage/);
+  assert.match(result.stdout, /query-index/);
+  assert.match(result.stdout, /result-renderer/);
+  assert.match(result.stdout, /Template lock:/);
+});
+
+test("unknown command exits 2", async () => {
+  const result = await run(["wat"]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /unknown command "wat"/);
+  assert.match(result.stderr, /--help/);
+});
+
+test("unknown flag on list exits 2", async () => {
+  const result = await run(["list", "--bogus"]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /unknown flag "--bogus"/);
+});
+
+test("unknown flag on java exits 2", async () => {
+  const result = await run(["java", "--bogus"]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /unknown flag "--bogus"/);
+});
+
+test("missing flag value exits 2", async () => {
+  const result = await run(["java", "--family"]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /flag "--family" requires a value/);
+});
+
+test("a flag value cannot be another flag", async () => {
+  const result = await run(["java", "--family", "--locator"]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /flag "--family" requires a value/);
+});
+
+test("a boolean flag cannot take an inline value", async () => {
+  const result = await run(["list", "--verbose=1"]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /flag "--verbose" does not take a value/);
+});
+
+test("unexpected positional argument exits 2", async () => {
+  const result = await run(["list", "extra"]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /unexpected argument "extra"/);
+});
+
+test("query-index --locator is rejected with exit 2", async () => {
+  const result = await run(["java", "--family", "query-index", "--locator"]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /--locator is not supported/);
+  assert.match(result.stderr, /only storage plugins/);
+});
+
+test("storage --locator remains valid", async () => {
+  const result = await run(["java", "--family", "storage", "--locator"]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.match(result.stdout, /not implemented yet/);
+});
+
+test("java/web/init are recognized but not implemented", async () => {
+  for (const command of ["java", "web", "init"]) {
+    const result = await run([command]);
+    assert.equal(result.code, EXIT_CODES.OK);
+    assert.match(result.stdout, /not implemented yet/);
+  }
+});
+
+test("Node < 20 throws exit code 7 and Node >= 20 passes", () => {
+  assert.throws(
+    () => assertSupportedNode("18.20.1"),
+    (error) => error.exitCode === EXIT_CODES.UNSUPPORTED_RUNTIME,
+  );
+  assert.throws(
+    () => assertSupportedNode("19.9.0"),
+    (error) => error.exitCode === EXIT_CODES.UNSUPPORTED_RUNTIME,
+  );
+
+  assert.equal(assertSupportedNode("20.0.0"), 20);
+  assert.equal(assertSupportedNode("v22.22.0"), 22);
+});
+
+test("SIGINT handler exits 130", () => {
+  let registered;
+  let exitCode;
+
+  const target = {
+    on(event, handler) {
+      assert.equal(event, "SIGINT");
+      registered = handler;
+    },
+    exit(code) {
+      exitCode = code;
+    },
+  };
+
+  installSigintHandler(target);
+
+  assert.equal(typeof registered, "function");
+  registered();
+  assert.equal(exitCode, EXIT_CODES.SIGINT);
+});
+
+test("bin entrypoint runs version successfully", () => {
+  const result = spawnSync(process.execPath, [BIN, "version"], {
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, EXIT_CODES.OK);
+  assert.match(result.stdout, /dicoogle-plugin-bootstrap \d+\.\d+\.\d+/);
+  assert.equal(result.stderr, "");
+});
+
+test("bin entrypoint preserves usage exit code 2", () => {
+  const result = spawnSync(process.execPath, [BIN, "wat"], {
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /unknown command "wat"/);
+});
