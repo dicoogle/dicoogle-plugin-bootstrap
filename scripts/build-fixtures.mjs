@@ -79,6 +79,17 @@ const QUERY_INDEX_CASES = [
       "--settings",
     ],
   },
+  {
+    name: "long-id",
+    id: "fixture-query-index-long-ident",
+    flags: [
+      "--ingest",
+      "--query",
+      "--move",
+      "--maintenance",
+      "--settings",
+    ],
+  },
 ];
 
 function parseArgs(argv) {

@@ -104,6 +104,62 @@ function classDeclaration(className, interfaces) {
   ];
 }
 
+function splitTopLevelArguments(text) {
+  const args = [];
+  let current = "";
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+
+  for (const character of text) {
+    if (quote) {
+      current += character;
+
+      if (escaped) {
+        escaped = false;
+      } else if (character === "\\") {
+        escaped = true;
+      } else if (character === quote) {
+        quote = null;
+      }
+
+      continue;
+    }
+
+    if (character === '"' || character === "'") {
+      quote = character;
+      current += character;
+      continue;
+    }
+
+    if (character === "(" || character === "[" || character === "{") {
+      depth += 1;
+      current += character;
+      continue;
+    }
+
+    if (character === ")" || character === "]" || character === "}") {
+      depth = Math.max(0, depth - 1);
+      current += character;
+      continue;
+    }
+
+    if (character === "," && depth === 0) {
+      args.push(current.trim());
+      current = "";
+      continue;
+    }
+
+    current += character;
+  }
+
+  if (current.trim().length > 0) {
+    args.push(current.trim());
+  }
+
+  return args;
+}
+
 function wrapLongLine(line, maxLength = 100) {
   if (line.length <= maxLength) {
     return [line];
@@ -137,11 +193,45 @@ function wrapLongLine(line, maxLength = 100) {
 
   const trimmed = line.trimStart();
 
+  if (
+    line.includes("new PluginMetadata(") &&
+    line.length > maxLength
+  ) {
+    const marker = "new PluginMetadata(";
+    const open = line.indexOf(marker) + marker.length;
+    const args = splitTopLevelArguments(line.slice(open));
+
+    return [
+      line.slice(0, open),
+      ...args.map(
+        (argument, index) =>
+          `${" ".repeat(leading + 4)}${argument}${
+            index === args.length - 1 ? "" : ","
+          }`,
+      ),
+    ];
+  }
+
   if (trimmed.startsWith("assertEquals(")) {
     const index = line.indexOf("(");
+    const rest = line.slice(index + 1);
+    const args = splitTopLevelArguments(rest);
+
+    if (args.length > 1) {
+      return [
+        line.slice(0, index + 1),
+        ...args.map(
+          (argument, argIndex) =>
+            `${" ".repeat(leading + 4)}${argument}${
+              argIndex === args.length - 1 ? "" : ","
+            }`,
+        ),
+      ];
+    }
+
     return [
       line.slice(0, index + 1),
-      `${" ".repeat(leading + 4)}${line.slice(index + 1)}`,
+      `${" ".repeat(leading + 4)}${rest}`,
     ];
   }
 

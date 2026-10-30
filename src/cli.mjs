@@ -53,6 +53,9 @@ Java flags:
   --family storage|query-index|listener|dimse
   storage:     --readable --writable --listable --locator
   query-index: --ingest --query --move --maintenance --settings
+               warning: IndexSettingsController selects the FIRST QueryIndexSettings
+               provider (IndexSettingsController.java:25-31); set enabled=false or
+               disable the other provider to avoid displacement.
   listener:    --ingest | --retrieve
   dimse:       --access-policy [--policy-target cfind,cmove,association]
                | --association-listener
@@ -154,6 +157,16 @@ export async function main(
 
     for (const warning of validated.warnings) {
       io.stderr.write(`warning: ${warning}\n`);
+    }
+
+    if (parsed.command === "java" && parsed.flags.settings === true) {
+      io.stderr.write(
+        "warning: --settings adds a QueryIndexSettings provider; " +
+          "IndexSettingsController selects the FIRST provider " +
+          "(IndexSettingsController.java:25-31), so a default-enabled " +
+          "generated plugin can displace Lucene's provider once wired. " +
+          "Set enabled=false or disable the other provider.\n",
+      );
     }
 
     switch (parsed.command) {
