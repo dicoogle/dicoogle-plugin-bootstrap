@@ -3,10 +3,10 @@
 Zero-dependency Node ESM CLI that generates plugin boilerplate for
 [dicoogle-next](https://github.com/dicoogle/dicoogle-next).
 
-> **Status:** milestone 3 (template lock and verification). The `java` and
-> `web` commands validate their input and derive canonical names, but generation
-> is not implemented yet. `init` is still a stub. The template lock is pinned
-> and verified by the CLI and by `npm run verify:templates`.
+> **Status:** milestone 4 (render engine and Java storage plan). The
+> `java --family storage` command generates a minimal working Maven module with
+> safe writes and dry-run support. Other Java families, `web`, and `init` are
+> still stubs.
 
 ## Requirements
 
@@ -28,8 +28,8 @@ After `npm link`, the same commands are available as
 
 | Command | Description |
 |---|---|
-| `init` | Interactive wizard (not implemented in milestone 3) |
-| `java` | Validate input and derive Java naming (generation not implemented yet) |
+| `init` | Interactive wizard (not implemented) |
+| `java` | Generate a Java module; storage is implemented, other families are stubs |
 | `web` | Validate input and derive web naming (generation not implemented yet) |
 | `list` | Show supported families, web hooks, and the verified template pin |
 | `version` | Show tool, Node, and verified template-lock versions |
@@ -55,6 +55,27 @@ and, where meaningful, includes a suggested valid form.
   `foobar` normalize to the same Java package segment. Use `--package` to
   disambiguate.
 
+
+## Storage generation
+
+```bash
+node bin/dicoogle-plugin-bootstrap.mjs java \
+  --id my-store --family storage \
+  --readable --writable --listable --locator \
+  --out /tmp/dicoogle-next-storage-my-store
+```
+
+This writes six files: `pom.xml`, `README.md`, the plugin class, config,
+properties, and a Jupiter test. The generated class implements only the selected
+interfaces; `--listable` implies readable and `--locator` adds only
+`DicomInstanceLocator`. If no concrete storage interface is selected, readable is
+added so the class still implements a concrete `StoragePlugin`.
+
+`--dry-run` prints only the file tree and writes nothing. A non-empty target
+exits `3` unless `--force` is used. Writes use `wx` unless forced, refuse the
+filesystem root and regular-file targets, and refuse symlink components under
+`--out`.
+
 ## Template lock
 
 `templates/lock.json` is the single pin file. It fixes the dicoogle-next commit
@@ -76,8 +97,8 @@ npm run verify:templates
 node scripts/verify-templates.mjs --lock templates/lock.json --templates templates
 ```
 
-Template bodies are currently a verifier smoke stub; real templates arrive in
-later milestones.
+Template bodies currently cover minimal storage POM, README, config, and
+properties files. Larger template sets arrive in later milestones.
 
 ## Exit codes
 
@@ -101,13 +122,18 @@ node --test test/cli.test.mjs
 node --test test/validate.test.mjs
 node --test test/naming.test.mjs
 node --test test/lock.test.mjs
+node --test test/render.test.mjs
+node --test test/model.test.mjs
+node --test test/plan.test.mjs
+node --test test/fs.test.mjs
 ```
 
-The CLI has no runtime dependencies. The parser, validation, naming, lock
-verification, and tests use only Node built-ins.
+The CLI has no runtime dependencies. The parser, validation, naming, renderer,
+lock verification, filesystem safety, and tests use only Node built-ins.
 
 ## Design
 
 The authoritative design is [`docs/design.md`](docs/design.md), including
-Addendum A for listener identity. Templates, pinning, and generation arrive in
-later milestones; the lock and verifier are implemented now.
+Addendum A for listener identity. Storage generation, the renderer, lock
+verification, and dry-run/safe-write tooling are implemented; other Java
+families, web generation, and the interactive wizard remain.

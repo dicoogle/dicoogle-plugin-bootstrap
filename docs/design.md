@@ -401,6 +401,7 @@ Storage class composition:
 - `--writable` → `WritableStoragePlugin`, `store`.
 - `--listable` → `ListableStoragePlugin` (which already extends `ReadableStoragePlugin`), `listChildren`, `isDirectory`; do not also list `ReadableStoragePlugin`.
 - `--locator` → `DicomInstanceLocator`, `locateInstance`, `listStudyInstances`, `listSeriesInstances`.
+- If no concrete storage interface is selected (zero flags or only `--locator`), readable is added so the class still implements a concrete `StoragePlugin`.
 - Do **not** add `QueryIndexStorageLocator` to storage output; that would register the plugin as query-index and risk duplicate registration on HEAD.
 - Every generated method body is a minimal working temp-directory implementation per §3.10; no exercised method throws.
 
@@ -580,6 +581,8 @@ Do not build Java or TypeScript by concatenating arbitrary conditional text. Use
      - `{{#each list}}...{{/each}}`.
    - No arbitrary expressions, no function calls, no nested templates loaded at runtime.
    - Unknown variable or unmatched block → exit `5`.
+   - The renderer and the lock verifier share `src/template-syntax.mjs` for tokenization and placeholder extraction; they must not maintain separate tokenizers.
+   - Inside `{{#each list}}`, the current item is exposed as `{{this}}`; object items also expose their own properties.
    - Java class bodies and `index.ts` bodies are **not** monolithic conditional templates; they are generated from fragments by the composer. Conditional blocks are reserved for invariant files (POM, config, README, `plugin.config.json`).
 
 Why: capability combinations are where generators usually produce uncompilable code. Fragment composition lets the generator validate that every selected interface has its required methods before writing.
@@ -835,7 +838,8 @@ dicoogle-plugin-bootstrap/
     validate.mjs               # id/name/package/scheme/version rules
     naming.mjs                 # case conversions and derived values
     model.mjs                  # family/hook model + closure rules
-    plan.mjs                   # ordered file plan
+    plan.mjs                   # ordered file plan + materialization
+    template-syntax.mjs        # shared tokenizer/placeholder extractor
     render.mjs                 # {{var}}, {{#if}}, {{#unless}}, {{#each}}
     java/compose.mjs           # Java fragment composer + validators
     java/fragments/            # capability method/import/test fragments
