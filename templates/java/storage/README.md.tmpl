@@ -1,0 +1,59 @@
+# {{name}}
+
+{{description}}
+
+- Plugin id: `{{id}}`
+- Maven artifact: `{{artifactId}}`
+- Java package: `{{package}}`
+- Metadata type: `{{pluginType}}`
+- Storage scheme: `{{scheme}}`
+- Default enabled: `{{enabledDefault}}`
+
+## Capabilities
+
+{{#if readable}}- Readable (`ReadableStoragePlugin`)
+{{/if}}{{#if writable}}- Writable (`WritableStoragePlugin`)
+{{/if}}{{#if listable}}- Listable (`ListableStoragePlugin`)
+{{/if}}{{#if locator}}- Instance locator (`DicomInstanceLocator`)
+{{/if}}
+## Configuration
+
+Add this to the host `application.yml` (the tool never edits it):
+
+```yaml
+app:
+  storage:
+    {{id}}:
+      enabled: true
+      root-dir: ./data/{{id}}
+      scheme: {{scheme}}
+```
+
+## Build
+
+```bash
+mvn -B -ntp spotless:check test
+```
+
+To build in place under `backend/plugins/{{artifactId}}`, add the module to
+`backend/pom.xml` and add the dependency to `backend/dicoogle-next/pom.xml`.
+The tool never edits those files.
+
+## Pinned baseline
+
+- dicoogle-next: `{{commit}}`
+- SDK: `{{sdkVersion}}`
+- Parent: `{{parentVersion}}`
+- Java: `{{javaVersion}}`
+- Maven: `{{mavenMinimum}}`
+- Spring Boot: `{{springBootVersion}}`
+- dcm4che: `{{dcm4cheVersion}}`
+
+## TODO
+
+Replace the minimal working stubs with the real storage logic.
+{{#if licenseSpdx}}
+## License
+
+SPDX-License-Identifier: {{licenseSpdx}}
+{{/if}}

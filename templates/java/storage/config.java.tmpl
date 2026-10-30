@@ -1,0 +1,24 @@
+{{#if licenseHeader}}{{licenseHeader}}
+
+{{/if}}package {{package}};
+
+import java.nio.file.Path;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.boot.context.properties.EnableConfigurationProperties;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+@Configuration
+@EnableConfigurationProperties({{ClassName}}Properties.class)
+public class {{ClassName}}Config {
+
+  @Bean
+  @ConditionalOnProperty(
+      prefix = "{{configPrefix}}",
+      name = "enabled",
+      havingValue = "true",
+      matchIfMissing = {{matchIfMissing}})
+  {{ClassName}} storagePlugin({{ClassName}}Properties properties) {
+    return new {{ClassName}}(Path.of(properties.getRootDir()), properties.getScheme());
+  }
+}

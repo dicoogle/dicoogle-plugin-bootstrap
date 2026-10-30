@@ -35,13 +35,67 @@
     }
   },
   "templates": {
-    "stubs/lock-smoke.txt.tmpl": {
-      "source": "stubs/lock-smoke.txt.tmpl",
-      "sha256": "d57d1d243e8f6bb3fe7a3e7fdae8d32afd9084fb8a86ef6e650d958d9d0b89ba",
+    "java/storage/pom.xml.tmpl": {
+      "source": "internal:java/storage/pom.xml.tmpl",
+      "sha256": "c546667526c974d9a2513cfdad90a3a85bfdd4d48a02c2e63fb07ae8906511b3",
       "placeholders": [
+        "artifactId",
         "description",
+        "name",
+        "parentArtifactId",
+        "parentGroupId",
+        "parentVersion",
+        "sdkArtifactId"
+      ]
+    },
+    "java/storage/README.md.tmpl": {
+      "source": "internal:java/storage/README.md.tmpl",
+      "sha256": "b96434507ce43689fded61705fe4877f4505d7befa181ac5aa2ec83227d31f29",
+      "placeholders": [
+        "artifactId",
+        "commit",
+        "dcm4cheVersion",
+        "description",
+        "enabledDefault",
         "id",
-        "name"
+        "javaVersion",
+        "licenseSpdx",
+        "listable",
+        "locator",
+        "mavenMinimum",
+        "name",
+        "package",
+        "parentVersion",
+        "pluginType",
+        "readable",
+        "scheme",
+        "sdkVersion",
+        "springBootVersion",
+        "writable"
+      ]
+    },
+    "java/storage/config.java.tmpl": {
+      "source": "internal:java/storage/config.java.tmpl",
+      "sha256": "e2aa642605bf823ccc10d4ba5d64987304b185ba5ad32229997dbf76f14aa45f",
+      "placeholders": [
+        "ClassName",
+        "configPrefix",
+        "licenseHeader",
+        "matchIfMissing",
+        "package"
+      ]
+    },
+    "java/storage/properties.java.tmpl": {
+      "source": "internal:java/storage/properties.java.tmpl",
+      "sha256": "ba9057f19aca5a1abbcbd7ab9eb61c901c8deae1abe4425f61f59bda12ca2456",
+      "placeholders": [
+        "ClassName",
+        "configPrefix",
+        "enabledDefault",
+        "id",
+        "licenseHeader",
+        "package",
+        "scheme"
       ]
     }
   }
