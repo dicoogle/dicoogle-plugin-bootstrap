@@ -7,7 +7,7 @@ export default {
   ],
   interfaces: [],
   fields: [
-    "private static final PluginMetadata METADATA =\n    new PluginMetadata(\"{{id}}\", \"{{name}}\", \"{{pluginVersion}}\", \"{{pluginType}}\");",
+    "private static final PluginMetadata METADATA = new PluginMetadata(\"{{id}}\", \"{{name}}\", \"{{pluginVersion}}\", \"{{pluginType}}\");",
     "private final Path rootDirectory;",
     "private final String scheme;",
   ],
@@ -34,9 +34,14 @@ export default {
     "java.nio.file.Path",
     "org.junit.jupiter.api.Test",
     "org.junit.jupiter.api.io.TempDir",
+    "org.springframework.boot.test.context.runner.ApplicationContextRunner",
     "static org.junit.jupiter.api.Assertions.assertEquals",
+    "static org.junit.jupiter.api.Assertions.assertTrue",
   ],
-  testFields: ["@TempDir Path tempDir;"],
+  testFields: [
+    "@TempDir Path tempDir;",
+    "private final ApplicationContextRunner contextRunner = new ApplicationContextRunner().withUserConfiguration({{ClassName}}Config.class);",
+  ],
   tests: [
     {
       name: "exposesMetadata",
@@ -45,6 +50,27 @@ export default {
         "assertEquals(\"{{id}}\", plugin.metadata().id());",
         "assertEquals(\"{{pluginType}}\", plugin.metadata().type());",
         "assertEquals(\"{{scheme}}\", plugin.scheme());",
+      ],
+    },
+    {
+      name: "registersBeanWhenEnabled",
+      body: [
+        "contextRunner",
+        "    .withPropertyValues(\"{{configPrefix}}.enabled=true\")",
+        "    .run(",
+        "        context -> {",
+        "          assertEquals(1, context.getBeansOfType({{ClassName}}.class).size());",
+        "          {{ClassName}} plugin = context.getBean({{ClassName}}.class);",
+        "          assertEquals(\"{{id}}\", plugin.metadata().id());",
+        "          assertEquals(\"{{pluginType}}\", plugin.metadata().type());",
+        "        });",
+      ],
+    },
+    {
+      name: "registersNothingByDefault",
+      body: [
+        "contextRunner.run(",
+        "    context -> assertTrue(context.getBeansOfType({{ClassName}}.class).isEmpty()));",
       ],
     },
   ],

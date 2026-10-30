@@ -13,8 +13,7 @@ export default {
       body: [
         "{{ClassName}} plugin = new {{ClassName}}(tempDir, \"{{scheme}}\");",
         "byte[] expected = new byte[] {6, 7, 8};",
-        "var stored =",
-        "    plugin.store(new ByteArrayInputStream(expected), \"application/dicom\");",
+        "var stored = plugin.store(new ByteArrayInputStream(expected), \"application/dicom\");",
         "byte[] actual;",
         "try (var input = plugin.openForRead(stored.location())) {",
         "  actual = input.readAllBytes();",

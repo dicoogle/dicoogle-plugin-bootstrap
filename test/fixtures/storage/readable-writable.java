@@ -12,9 +12,7 @@ import org.dicoogle.sdk.storage.ReadableStoragePlugin;
 import org.dicoogle.sdk.storage.StoredObject;
 import org.dicoogle.sdk.storage.WritableStoragePlugin;
 
-public class MyStoreStoragePlugin
-    implements ReadableStoragePlugin,
-        WritableStoragePlugin {
+public class MyStoreStoragePlugin implements ReadableStoragePlugin, WritableStoragePlugin {
 
   private static final PluginMetadata METADATA =
       new PluginMetadata("my-store", "My Store", "0.1.0", "storage");

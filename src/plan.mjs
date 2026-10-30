@@ -10,6 +10,15 @@ import {
 } from "./java/compose.mjs";
 import { expectedStorageMethods } from "./java/fragments/storage/index.mjs";
 
+export function escapeXml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&apos;");
+}
+
 export function buildStorageData(model, lock) {
   const pin = lock.dicoogleNext;
 
@@ -21,6 +30,16 @@ export function buildStorageData(model, lock) {
     writable: model.writable,
     listable: model.listable,
     locator: model.locator,
+    nameXml: escapeXml(model.name),
+    descriptionXml: escapeXml(model.description),
+    configMethodOneLine:
+      `  ${model.className} storagePlugin(${model.className}Properties properties) {`
+        .length <= 100,
+    configReturnOneLine:
+      `    return new ${model.className}(Path.of(properties.getRootDir()), properties.getScheme());`
+        .length <= 100,
+    propertiesAnnotationOneLine:
+      `@ConfigurationProperties(prefix = "${model.configPrefix}")`.length <= 100,
     licenseHeader: model.licenseHeader,
     licenseSpdx: model.license ?? "",
     enabledDefault: model.enabledDefault,

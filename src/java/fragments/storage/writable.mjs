@@ -36,8 +36,7 @@ export default {
       name: "storesBytesUnderRoot",
       body: [
         "{{ClassName}} plugin = new {{ClassName}}(tempDir, \"{{scheme}}\");",
-        "var stored =",
-        "    plugin.store(new ByteArrayInputStream(new byte[] {4, 5}), \"application/dicom\");",
+        "var stored = plugin.store(new ByteArrayInputStream(new byte[] {4, 5}), \"application/dicom\");",
         "assertEquals(2, stored.contentLength());",
         "assertTrue(Files.isRegularFile(Path.of(stored.location())));",
       ],

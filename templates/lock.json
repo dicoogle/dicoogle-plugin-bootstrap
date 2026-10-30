@@ -37,11 +37,11 @@
   "templates": {
     "java/storage/pom.xml.tmpl": {
       "source": "internal:java/storage/pom.xml.tmpl",
-      "sha256": "c546667526c974d9a2513cfdad90a3a85bfdd4d48a02c2e63fb07ae8906511b3",
+      "sha256": "6f2b7c544ef1728d4206a5127cd74a50199940c5dac432348167e8c97514821f",
       "placeholders": [
         "artifactId",
-        "description",
-        "name",
+        "descriptionXml",
+        "nameXml",
         "parentArtifactId",
         "parentGroupId",
         "parentVersion",
@@ -50,7 +50,7 @@
     },
     "java/storage/README.md.tmpl": {
       "source": "internal:java/storage/README.md.tmpl",
-      "sha256": "b96434507ce43689fded61705fe4877f4505d7befa181ac5aa2ec83227d31f29",
+      "sha256": "edcee2aee5f8c2f51e89b987a24fa04b6fbeefd2593d62c47ed49dd5b37796ff",
       "placeholders": [
         "artifactId",
         "commit",
@@ -76,10 +76,12 @@
     },
     "java/storage/config.java.tmpl": {
       "source": "internal:java/storage/config.java.tmpl",
-      "sha256": "e2aa642605bf823ccc10d4ba5d64987304b185ba5ad32229997dbf76f14aa45f",
+      "sha256": "cd53eb34b7ee7223089b1ca3656ae30ea0b0bb4a4a25fe95dce27cd7e8bbf89f",
       "placeholders": [
         "ClassName",
+        "configMethodOneLine",
         "configPrefix",
+        "configReturnOneLine",
         "licenseHeader",
         "matchIfMissing",
         "package"
@@ -87,7 +89,7 @@
     },
     "java/storage/properties.java.tmpl": {
       "source": "internal:java/storage/properties.java.tmpl",
-      "sha256": "ba9057f19aca5a1abbcbd7ab9eb61c901c8deae1abe4425f61f59bda12ca2456",
+      "sha256": "472b4cc6ba932fb0c17ed85fae012572f372b67230e9b9b8da0eb7333b3260a5",
       "placeholders": [
         "ClassName",
         "configPrefix",
@@ -95,6 +97,7 @@
         "id",
         "licenseHeader",
         "package",
+        "propertiesAnnotationOneLine",
         "scheme"
       ]
     }

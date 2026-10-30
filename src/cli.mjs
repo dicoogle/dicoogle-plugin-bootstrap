@@ -11,6 +11,7 @@ import {
 import { formatDryRunTree, writePlan } from "./fs.mjs";
 import { DEFAULT_TEMPLATES_DIR, loadLock } from "./lock.mjs";
 import { buildStorageModel } from "./model.mjs";
+import { inspectParentPom } from "./parent.mjs";
 import { buildStoragePlan, materializePlan } from "./plan.mjs";
 import { validateGenerationOptions } from "./validate.mjs";
 
@@ -175,7 +176,11 @@ export async function main(
           flags: parsed.flags,
           values: validated.values,
         });
+        inspectParentPom({ out: model.out, lock });
         const plan = buildStoragePlan(model, lock);
+        const files = materializePlan(plan, {
+          templatesDir: DEFAULT_TEMPLATES_DIR,
+        });
 
         if (parsed.flags.dryRun === true) {
           io.stdout.write(
@@ -188,9 +193,6 @@ export async function main(
           return EXIT_CODES.OK;
         }
 
-        const files = materializePlan(plan, {
-          templatesDir: DEFAULT_TEMPLATES_DIR,
-        });
         const result = writePlan({
           out: model.out,
           files,

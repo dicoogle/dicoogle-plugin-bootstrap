@@ -18,7 +18,11 @@ public class {{ClassName}}Config {
       name = "enabled",
       havingValue = "true",
       matchIfMissing = {{matchIfMissing}})
-  {{ClassName}} storagePlugin({{ClassName}}Properties properties) {
-    return new {{ClassName}}(Path.of(properties.getRootDir()), properties.getScheme());
-  }
+{{#if configMethodOneLine}}  {{ClassName}} storagePlugin({{ClassName}}Properties properties) {
+{{/if}}{{#unless configMethodOneLine}}  {{ClassName}} storagePlugin(
+      {{ClassName}}Properties properties) {
+{{/unless}}{{#if configReturnOneLine}}    return new {{ClassName}}(Path.of(properties.getRootDir()), properties.getScheme());
+{{/if}}{{#unless configReturnOneLine}}    return new {{ClassName}}(
+        Path.of(properties.getRootDir()), properties.getScheme());
+{{/unless}}  }
 }

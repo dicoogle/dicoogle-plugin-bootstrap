@@ -4,8 +4,10 @@
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-@ConfigurationProperties(prefix = "{{configPrefix}}")
-public class {{ClassName}}Properties {
+{{#if propertiesAnnotationOneLine}}@ConfigurationProperties(prefix = "{{configPrefix}}")
+{{/if}}{{#unless propertiesAnnotationOneLine}}@ConfigurationProperties(
+    prefix = "{{configPrefix}}")
+{{/unless}}public class {{ClassName}}Properties {
 
   private boolean enabled = {{enabledDefault}};
   private String rootDir = "./data/{{id}}";

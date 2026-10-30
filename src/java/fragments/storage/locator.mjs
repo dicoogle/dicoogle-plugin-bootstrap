@@ -15,16 +15,13 @@ export default {
       name: "locateInstance",
       signature:
         "public Optional<URI> locateInstance(\n" +
-        "      String studyInstanceUid, String seriesInstanceUid, String sopInstanceUid)\n" +
-        "      throws IOException",
+        "      String studyInstanceUid, String seriesInstanceUid, String sopInstanceUid) throws IOException",
       body: [
         "if (sopInstanceUid == null || sopInstanceUid.isBlank()) {",
         "  return Optional.empty();",
         "}",
         "Path candidate = rootDirectory.resolve(safeSegment(sopInstanceUid) + \".dcm\");",
-        "return Files.isRegularFile(candidate)",
-        "    ? Optional.of(candidate.toUri())",
-        "    : Optional.empty();",
+        "return Files.isRegularFile(candidate) ? Optional.of(candidate.toUri()) : Optional.empty();",
       ],
     },
     {
@@ -36,8 +33,8 @@ export default {
     {
       name: "listSeriesInstances",
       signature:
-        "public List<URI> listSeriesInstances(\n" +
-        "      String studyInstanceUid, String seriesInstanceUid) throws IOException",
+        "public List<URI> listSeriesInstances(String studyInstanceUid, String seriesInstanceUid)\n" +
+        "      throws IOException",
       body: ["return List.of();"],
     },
     {

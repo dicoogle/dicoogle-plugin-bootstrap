@@ -76,8 +76,16 @@ function classDeclaration(className, interfaces) {
     return [`public class ${className} {`];
   }
 
-  if (interfaces.length === 1) {
-    return [`public class ${className} implements ${interfaces[0]} {`];
+  const oneLine = `public class ${className} implements ${interfaces.join(", ")} {`;
+
+  if (oneLine.length <= 100) {
+    return [oneLine];
+  }
+
+  const implementsLine = `    implements ${interfaces.join(", ")} {`;
+
+  if (implementsLine.length <= 100) {
+    return [`public class ${className}`, implementsLine];
   }
 
   return [
@@ -92,12 +100,70 @@ function classDeclaration(className, interfaces) {
   ];
 }
 
+function wrapLongLine(line, maxLength = 100) {
+  if (line.length <= maxLength) {
+    return [line];
+  }
+
+  const leading = line.match(/^ */)[0].length;
+  const assignmentIndex = line.indexOf(" = ");
+
+  if (assignmentIndex !== -1) {
+    const before = line.slice(0, assignmentIndex + 2);
+    const after = line.slice(assignmentIndex + 3).trimStart();
+    const continuation = " ".repeat(leading + 4);
+    const chainIndex = after.indexOf(".withUserConfiguration(");
+
+    if (
+      continuation.length + after.length > maxLength &&
+      chainIndex > 0
+    ) {
+      return [
+        before,
+        `${continuation}${after.slice(0, chainIndex)}`,
+        `${" ".repeat(leading + 8)}${after.slice(chainIndex)}`,
+      ];
+    }
+
+    return [before, `${continuation}${after}`];
+  }
+
+  const trimmed = line.trimStart();
+
+  if (trimmed.startsWith("assertEquals(")) {
+    const index = line.indexOf("(");
+    return [
+      line.slice(0, index + 1),
+      `${" ".repeat(leading + 4)}${line.slice(index + 1)}`,
+    ];
+  }
+
+  if (trimmed.startsWith("context -> assertTrue(")) {
+    const prefix = "context -> assertTrue(";
+    const start = line.indexOf(prefix);
+    const after = line.slice(start + prefix.length);
+    const assertLine = `${" ".repeat(leading + 4)}assertTrue(${after}`;
+
+    if (assertLine.length <= maxLength) {
+      return [`${line.slice(0, start)}context ->`, assertLine];
+    }
+
+    return [
+      `${line.slice(0, start)}context ->`,
+      `${" ".repeat(leading + 4)}assertTrue(`,
+      `${" ".repeat(leading + 8)}${after}`,
+    ];
+  }
+
+  return [line];
+}
+
 function renderFields(fields, data, templateName) {
   return fields.flatMap((field) =>
     indentLines(
       renderString(field, data, templateName).split("\n"),
       2,
-    ),
+    ).flatMap((line) => wrapLongLine(line)),
   );
 }
 
@@ -115,7 +181,9 @@ function renderMethod(method, data, templateName) {
   }
 
   lines.push(`  ${signature} {`);
-  lines.push(...indentLines(body, 4));
+  lines.push(
+    ...indentLines(body, 4).flatMap((line) => wrapLongLine(line)),
+  );
   lines.push("  }");
 
   return lines;
@@ -135,7 +203,7 @@ function renderConstructor(className, constructor, data, templateName) {
 
   return [
     `  public ${className}(${params}) {`,
-    ...indentLines(body, 4),
+    ...indentLines(body, 4).flatMap((line) => wrapLongLine(line)),
     "  }",
   ];
 }
@@ -244,7 +312,7 @@ function composeTestClass({
     return [
       "  @Test",
       `  void ${test.name}() throws Exception {`,
-      ...indentLines(body, 4),
+      ...indentLines(body, 4).flatMap((line) => wrapLongLine(line)),
       "  }",
     ];
   });
@@ -350,6 +418,40 @@ function assertBalanced(content, open, close, label) {
   }
 }
 
+function angleBracketCounts(content) {
+  let openCount = 0;
+  let closeCount = 0;
+
+  for (let index = 0; index < content.length; index += 1) {
+    const character = content[index];
+    const next = content[index + 1];
+
+    if (character === "-" && next === ">") {
+      index += 1;
+      continue;
+    }
+
+    if (character === "<" && next !== "=") {
+      openCount += 1;
+    } else if (character === ">" && next !== "=") {
+      closeCount += 1;
+    }
+  }
+
+  return { openCount, closeCount };
+}
+
+function assertAngleBrackets(content) {
+  const { openCount, closeCount } = angleBracketCounts(content);
+
+  if (openCount !== closeCount) {
+    throw new TemplateRenderError(
+      `unbalanced angle brackets in generated Java source ` +
+        `(${openCount} "<", ${closeCount} ">")`,
+    );
+  }
+}
+
 export function validateJavaSource({
   content,
   expectedPackage,
@@ -407,7 +509,7 @@ export function validateJavaSource({
 
   assertBalanced(source, "{", "}", "braces");
   assertBalanced(source, "(", ")", "parentheses");
-  assertBalanced(source, "<", ">", "angle brackets");
+  assertAngleBrackets(source);
 
   const importLines = [
     ...source.matchAll(/^import\s+(?:static\s+)?([\w.]+);/gm),

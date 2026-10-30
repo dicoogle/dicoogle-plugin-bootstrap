@@ -12,9 +12,7 @@ import org.dicoogle.sdk.PluginMetadata;
 import org.dicoogle.sdk.storage.DicomInstanceLocator;
 import org.dicoogle.sdk.storage.ReadableStoragePlugin;
 
-public class MyStoreStoragePlugin
-    implements ReadableStoragePlugin,
-        DicomInstanceLocator {
+public class MyStoreStoragePlugin implements ReadableStoragePlugin, DicomInstanceLocator {
 
   private static final PluginMetadata METADATA =
       new PluginMetadata("my-store", "My Store", "0.1.0", "storage");
@@ -44,15 +42,12 @@ public class MyStoreStoragePlugin
 
   @Override
   public Optional<URI> locateInstance(
-      String studyInstanceUid, String seriesInstanceUid, String sopInstanceUid)
-      throws IOException {
+      String studyInstanceUid, String seriesInstanceUid, String sopInstanceUid) throws IOException {
     if (sopInstanceUid == null || sopInstanceUid.isBlank()) {
       return Optional.empty();
     }
     Path candidate = rootDirectory.resolve(safeSegment(sopInstanceUid) + ".dcm");
-    return Files.isRegularFile(candidate)
-        ? Optional.of(candidate.toUri())
-        : Optional.empty();
+    return Files.isRegularFile(candidate) ? Optional.of(candidate.toUri()) : Optional.empty();
   }
 
   @Override
@@ -61,8 +56,8 @@ public class MyStoreStoragePlugin
   }
 
   @Override
-  public List<URI> listSeriesInstances(
-      String studyInstanceUid, String seriesInstanceUid) throws IOException {
+  public List<URI> listSeriesInstances(String studyInstanceUid, String seriesInstanceUid)
+      throws IOException {
     return List.of();
   }
 
