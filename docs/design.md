@@ -148,7 +148,7 @@ dicoogle-plugin-bootstrap version              # tool + template-lock versions
 | `--plugin-version <semver>` | `0.1.0` | `PluginMetadata.version` / web `version`; independent of Maven version. |
 | `--out <path>` | Java: `./dicoogle-next-<domain>-<id>`; web: `./<id>` | Target directory. The tool writes only below this path. |
 | `--force` | off | Allow a non-empty target. Existing generated files may be overwritten; unrelated files are never deleted. |
-| `--dry-run` | off | Run all validation and print only the file tree. No writes. Non-empty target without `--force` still exits `3`. |
+| `--dry-run` | off | Run all validation, render/compose in memory, run the post-render validators, then print only the file tree. No writes. Render/compose errors use the same exit codes as a real run. Non-empty target without `--force` still exits `3`. |
 | `--repo <path>` | none | dicoogle-next checkout used only for plugin-id uniqueness scanning and template validation. Never modified. |
 | `--license <SPDX\|none>` | `none` | Optional Java header. `none` means no header, matching current dicoogle-next. A value emits exactly one line at the top of each generated Java file: `// SPDX-License-Identifier: <SPDX>`. No full license boilerplate is generated (D7). |
 | `--type <token>` | derived | Override `{{pluginType}}` without changing the rest of the template. |
@@ -272,7 +272,9 @@ dicoogle-plugin-bootstrap web \
 
 ### 2.8 Dry-run output
 
-Only the tree is printed to stdout; diagnostics go to stderr.
+Dry-run renders and composes the full plan in memory, runs the same post-render
+validators as a real run, and only then prints the tree to stdout. Diagnostics
+go to stderr. No files or temporary directories are written.
 
 ```
 my-dicom-store/
@@ -382,6 +384,9 @@ Rules:
 - Unknown placeholders are a fatal render error (exit `5`), never passed through.
 - `{{id}}` is never transformed inside a placeholder. All derived values are computed before rendering.
 - `{{pluginType}}` is the **only** metadata-type variable in Java and web templates. A future switch to `List<String> types` changes one template expression, not every file.
+- XML contexts use escaped values. The POM template consumes `{{nameXml}}` and
+  `{{descriptionXml}}`, produced by escaping `&`, `<`, `>`, `"`, and `'`.
+  Markdown/Java contexts keep the raw `{{name}}` and `{{description}}`.
 
 ### 3.3 Java storage files
 
@@ -391,7 +396,7 @@ Rules:
 | `src/main/java/{{packagePath}}/{{ClassName}}.java` | `backend/plugins/dicoogle-next-storage-file-ro/src/main/java/org/dicoogle/storage/filero/FileReadOnlyStoragePlugin.java:16-136`; `.../dicoogle-next-storage-file-rw/.../FileReadWriteStoragePlugin.java:25-236` | Capability fragments: readable, writable, listable, locator. |
 | `.../{{ClassName}}Config.java` | `.../dicoogle-next-storage-file-rw/.../FileReadWriteStorageConfig.java:9-17` | Always. `@Configuration`, `@EnableConfigurationProperties`, `@Bean`, `@ConditionalOnProperty`. |
 | `.../{{ClassName}}Properties.java` | `.../dicoogle-next-storage-file-rw/.../FileReadWriteStorageProperties.java:5-34` | Always. `enabled`, `rootDir`, `scheme`. |
-| `src/test/java/{{packagePath}}/{{ClassName}}Test.java` | `.../dicoogle-next-storage-file-rw/src/test/java/.../FileReadWriteStoragePluginTest.java:18-72` | Always. Direct instantiation, `@TempDir`, metadata/scheme test, plus passing capability tests: store/read round trip (writable+readable), list children (listable), locate an object placed by the test or stored by the stub (locator). The generated stub is a working temp-directory implementation, not a throwing placeholder. |
+| `src/test/java/{{packagePath}}/{{ClassName}}Test.java` | `.../dicoogle-next-storage-file-rw/src/test/java/.../FileReadWriteStoragePluginTest.java:18-72` | Always. Direct instantiation, `@TempDir`, metadata/scheme test, plus passing capability tests: store/read round trip (writable+readable), list children (listable), locate an object placed by the test or stored by the stub (locator). Also includes `ApplicationContextRunner` checks that `enabled=true` registers the plugin bean with the expected id/type and that the default (`enabled=false`) registers nothing. The generated stub is a working temp-directory implementation, not a throwing placeholder. |
 | `README.md` | New template; style from `backend/README.md` and `webapp/README.md` | Always. Contains the only YAML snippet; wiring and TODO list. |
 
 Storage class composition:
@@ -764,7 +769,7 @@ Dependencies by family:
 
 | Family | Compile | Test |
 |---|---|---|
-| storage | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter` |
+| storage | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `spring-boot-test`; `assertj-core` (required to compile `ApplicationContextRunner` use) |
 | query-index | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `dcm4che-core` test scope when tests build `Attributes` |
 | listener | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter` |
 | dimse | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `dcm4che-core` test scope for policy request tests |
@@ -909,7 +914,7 @@ For each family and meaningful combination:
 - listener: `--ingest` (assert `org.dicoogle.query.*`, `app.query.*`, type `query-index`, `*IngestListener`) and `--retrieve` (assert `org.dicoogle.service.*`, `app.service.*`, type `service`, `*RetrieveListener`).
 - dimse: `--access-policy --policy-target cfind`, `cmove`, `association`, multi-target, `--association-listener`, both.
 
-CI procedure per case:
+CI procedure per case (automated by `scripts/build-fixtures.mjs`):
 
 ```bash
 git clone <dicoogle-next> /tmp/dicoogle-next

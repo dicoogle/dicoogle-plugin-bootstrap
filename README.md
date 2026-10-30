@@ -3,10 +3,10 @@
 Zero-dependency Node ESM CLI that generates plugin boilerplate for
 [dicoogle-next](https://github.com/dicoogle/dicoogle-next).
 
-> **Status:** milestone 4 (render engine and Java storage plan). The
-> `java --family storage` command generates a minimal working Maven module with
-> safe writes and dry-run support. Other Java families, `web`, and `init` are
-> still stubs.
+> **Status:** milestone 5 (Java storage templates and compile fixture). The
+> `java --family storage` command generates a working, Google-Java-Format-clean
+> Maven module with Spring context tests, safe writes, and dry-run support.
+> Other Java families, `web`, and `init` are still stubs.
 
 ## Requirements
 
@@ -55,7 +55,6 @@ and, where meaningful, includes a suggested valid form.
   `foobar` normalize to the same Java package segment. Use `--package` to
   disambiguate.
 
-
 ## Storage generation
 
 ```bash
@@ -71,10 +70,17 @@ interfaces; `--listable` implies readable and `--locator` adds only
 `DicomInstanceLocator`. If no concrete storage interface is selected, readable is
 added so the class still implements a concrete `StoragePlugin`.
 
-`--dry-run` prints only the file tree and writes nothing. A non-empty target
-exits `3` unless `--force` is used. Writes use `wx` unless forced, refuse the
-filesystem root and regular-file targets, and refuse symlink components under
-`--out`.
+The generated test suite includes direct-instantiation capability tests and
+`ApplicationContextRunner` checks: `enabled=true` must register the plugin bean
+with the expected id/type, and the default `enabled=false` must register nothing.
+The POM output XML-escapes the name and description.
+
+`--dry-run` validates, renders and composes the plan in memory, runs the
+post-render validators, and prints only the file tree; it writes nothing. A
+non-empty target exits `3` unless `--force` is used. Writes use `wx` unless
+forced, refuse the filesystem root and regular-file targets, and refuse symlink
+components under `--out`. Parent POM conflicts (`../../pom.xml` with the wrong
+GAV) exit `2`.
 
 ## Template lock
 
@@ -97,8 +103,9 @@ npm run verify:templates
 node scripts/verify-templates.mjs --lock templates/lock.json --templates templates
 ```
 
-Template bodies currently cover minimal storage POM, README, config, and
-properties files. Larger template sets arrive in later milestones.
+Template bodies currently cover storage POM, README, config, and properties
+files. The plugin class and test are composed from pinned fragments. Larger
+template sets arrive in later milestones.
 
 ## Exit codes
 
@@ -126,14 +133,23 @@ node --test test/render.test.mjs
 node --test test/model.test.mjs
 node --test test/plan.test.mjs
 node --test test/fs.test.mjs
+node --test test/parent.test.mjs
 ```
 
 The CLI has no runtime dependencies. The parser, validation, naming, renderer,
 lock verification, filesystem safety, and tests use only Node built-ins.
 
+Build the full Java fixture matrix (temp clone, parent/SDK install, all storage
+cases, Spotless check, tests, no-rewrite hash check, full reactor, standalone):
+
+```bash
+node scripts/build-fixtures.mjs --repo /path/to/dicoogle-next --keep
+```
+
 ## Design
 
 The authoritative design is [`docs/design.md`](docs/design.md), including
 Addendum A for listener identity. Storage generation, the renderer, lock
-verification, and dry-run/safe-write tooling are implemented; other Java
-families, web generation, and the interactive wizard remain.
+verification, dry-run/safe-write tooling, and the Java compile fixture are
+implemented; other Java families, web generation, and the interactive wizard
+remain.
