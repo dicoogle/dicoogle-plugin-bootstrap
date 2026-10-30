@@ -58,6 +58,35 @@ const STORAGE_CASES = [
   },
 ];
 
+const LISTENER_CASES = [
+  {
+    name: "ingest",
+    id: "fixture-lst-ing",
+    flags: ["--ingest"],
+    artifactId: "dicoogle-next-query-fixture-lst-ing",
+  },
+  {
+    name: "retrieve",
+    id: "fixture-lst-ret",
+    flags: ["--retrieve"],
+    artifactId: "dicoogle-next-service-fixture-lst-ret",
+  },
+  {
+    name: "ingest-long",
+    id: "fixture-listener-ingest-long-identifier",
+    flags: ["--ingest"],
+    artifactId:
+      "dicoogle-next-query-fixture-listener-ingest-long-identifier",
+  },
+  {
+    name: "retrieve-long",
+    id: "fixture-listener-retrieve-long-identifier",
+    flags: ["--retrieve"],
+    artifactId:
+      "dicoogle-next-service-fixture-listener-retrieve-long-identifier",
+  },
+];
+
 const QUERY_INDEX_CASES = [
   { name: "ingest", id: "fixture-ing", flags: ["--ingest"] },
   { name: "query", id: "fixture-qry", flags: ["--query"] },
@@ -296,8 +325,13 @@ function runCase(
   },
 ) {
   const prefix =
-    family === "storage" ? "dicoogle-next-storage" : "dicoogle-next-query";
-  const artifactId = `${prefix}-${testCase.id}`;
+    family === "storage"
+      ? "dicoogle-next-storage"
+      : family === "query-index"
+        ? "dicoogle-next-query"
+        : "dicoogle-next-listener";
+  const artifactId =
+    testCase.artifactId ?? `${prefix}-${testCase.id}`;
   const outputDir = path.join(backendDir, "plugins", artifactId);
 
   console.log(`\n=== ${family} case: ${testCase.name} ===`);
@@ -438,6 +472,14 @@ function main() {
       });
     }
 
+    for (const testCase of LISTENER_CASES) {
+      runCase("listener", testCase, {
+        backendDir,
+        mvnw,
+        backendPom,
+      });
+    }
+
     addAppDependency(
       appPom,
       "dicoogle-next-storage-fixture-all",
@@ -445,6 +487,14 @@ function main() {
     addAppDependency(
       appPom,
       "dicoogle-next-query-fixture-qall",
+    );
+    addAppDependency(
+      appPom,
+      "dicoogle-next-query-fixture-lst-ing",
+    );
+    addAppDependency(
+      appPom,
+      "dicoogle-next-service-fixture-lst-ret",
     );
 
     console.log("\n=== full reactor clean verify ===");
@@ -508,9 +558,39 @@ function main() {
       cwd: queryStandaloneOut,
     });
 
+    for (const [kind, id] of [
+      ["ingest", "fixture-std-ing"],
+      ["retrieve", "fixture-std-ret"],
+    ]) {
+      const artifactId = `dicoogle-next-${kind === "ingest" ? "query" : "service"}-${id}`;
+      const listenerStandaloneOut = path.join(
+        runRoot,
+        "standalone",
+        artifactId,
+      );
+      run(
+        process.execPath,
+        [
+          CLI,
+          "java",
+          "--id",
+          id,
+          "--family",
+          "listener",
+          `--${kind}`,
+          "--out",
+          listenerStandaloneOut,
+        ],
+        { cwd: TOOL_ROOT },
+      );
+      run("mvn", ["-B", "-ntp", "spotless:check", "test"], {
+        cwd: listenerStandaloneOut,
+      });
+    }
+
     console.log(
-      "\nAll storage and query-index fixture cases, full reactor, and " +
-        "standalone builds passed.",
+      "\nAll storage, query-index, and listener fixture cases, full reactor, " +
+        "and standalone builds passed.",
     );
 
     if (options.keep) {
