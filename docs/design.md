@@ -48,7 +48,6 @@ These decisions supersede the earlier open questions and are applied throughout 
 | # | Decision |
 |---|---|
 | D1 | Query-index `--locator` is dropped. The CLI rejects it with exit `2` and explains that only storage plugins feed `List<DicomInstanceLocator>` on HEAD. |
-| D2 | DIMSE `--policy-target` is optional, defaults to `cfind`, and supports multi-target in v1. |
 | D3 | Storage defaults to `enabled=false`, `scheme=<id>`. |
 | D4 | Generated Java modules inherit the parent Maven version; they have no own `<version>`. |
 | D5 | Metadata type tokens are the bundled `storage`, `query-index`, `service`, held in the single `{{pluginType}}` variable. |
@@ -99,7 +98,6 @@ There is **no** `PluginSet`, `IndexerInterface`, `JettyPluginInterface`, Restlet
 | `storage` | `--readable --writable --listable --locator` | `ReadableStoragePlugin`, `WritableStoragePlugin`, `ListableStoragePlugin`, `DicomInstanceLocator` | `--listable` implies `--readable`; `--locator` adds `DicomInstanceLocator`, not `QueryIndexStorageLocator` (avoids accidental query-index registration). Zero flags defaults to `--readable`. |
 | `query-index` | `--ingest --query --move --maintenance --settings` | `StorageIngestEventListener`, `QueryService`, `QueryMoveService`, `QueryIndexMaintenance`, `QueryIndexSettings` | `--maintenance` extends `QueryIndexPlugin`; `--settings` alone must add `QueryIndexPlugin`. `QueryIndexStorageLocator` is not offered; `--locator` is rejected with exit `2` (D1). |
 | `listener` | `--ingest` or `--retrieve` (exactly one) | `StorageIngestEventListener` or `StorageRetrieveEventListener` | Two different identities. `--ingest` is a registered query-index extension: domain `query`, prefix `app.query.<id>`, type `query-index`, suffix `IngestListener`. `--retrieve` is a service extension consumed only by DICOMweb: domain `service`, prefix `app.service.<id>`, type `service`, suffix `RetrieveListener`. |
-| `dimse` | `--access-policy` (+ optional `--policy-target`) and/or `--association-listener` | One `DimseAccessPolicy<R>` class per target, and/or `DimseAssociationEventListener` | `--policy-target` defaults to `cfind`; multi-target is supported in v1. `DimseAccessPolicy` is not a `DicooglePlugin` and has no metadata. One class per generic type is required because of erasure. |
 
 **D1 applied:** the query-index family’s `--locator` is not independently useful on HEAD. `QueryIndexStorageLocator` remains an SDK type, but the CLI does not generate it from either family. A `query-index` invocation containing `--locator` exits `2` with the explanation that only storage plugins feed `List<DicomInstanceLocator>` (`PluginRuntimeConfig.java:84-90`). See §3.4 and §10, risk R6.
 
@@ -110,7 +108,25 @@ There is **no** `PluginSet`, `IndexerInterface`, `JettyPluginInterface`, Restlet
 - **Locator consumers.** The only `List<DicomInstanceLocator>` bean is derived from storage plugins (`PluginRuntimeConfig.java:84-90`). DICOMweb retrieval and native-frame services inject it (`DicomwebRetrieveService.java:40`, `NativeFrameService.java:40`).
 - **Settings.** `IndexSettingsController` takes the first query-index plugin that implements `QueryIndexSettings` (`IndexSettingsController.java:25-31`). `QueryIndexMaintenanceService` selects by `indexId()` (`QueryIndexMaintenanceService.java:116-126`), so `indexId()` must be unique.
 - **Lifecycle.** The Lucene config is the only bundled plugin that opts into `start`/`stop` (`LuceneQueryConfig.java:15`). Generated query-index and any lifecycle-bearing plugin must use the same `@Bean(initMethod = "start", destroyMethod = "stop")`.
-- **Configuration.** Spring Boot YAML is the only backend config mechanism. Existing prefixes: `app.query.lucene`, `app.storage.file-ro`, `app.storage.file-rw`, `app.plugins.*` (`application.yml:119-142`; dev overrides `application-dev.yml:35-49`). There is no per-plugin settings file. Generated prefixes are family-specific: `app.storage.<id>`, `app.query.<id>`, `app.service.<id>`, `app.dimse.<id>`. For the listener family, the kind chooses `app.query.<id>` (ingest) or `app.service.<id>` (retrieve), matching the registration identity.
+- **Configuration.** Spring Boot YAML is the only backend config mechanism. Existing prefixes: `app.query.lucene`, `app.storage.file-ro`, `app.storage.file-rw`, `app.plugins.*` (`application.yml:119-142`; dev overrides `application-dev.yml:35-49`). There is no per-plugin settings file. Generated prefixes are family-specific: `app.storage.<id>`, `app.query.<id>`, `app.service.<id>`. For the listener family, the kind chooses `app.query.<id>` (ingest) or `app.service.<id>` (retrieve), matching the registration identity.
+
+### 1.4 Descoped extension points
+
+`DimseAccessPolicy` and `DimseAssociationEventListener` exist in
+dicoogle-next and are consumed by the DIMSE stack, but they are intentionally
+**not generated** by this tool:
+
+- They are not present in classic Dicoogle, so the listener-only tool keeps the
+  surface area aligned with the supported classic/next overlap.
+- A generated access policy can deny requests when wired, which is a
+  high-impact behavior change for a boilerplate generator.
+- The listener family already covers the safe, read-only event hooks
+  (`StorageIngestEventListener` and `StorageRetrieveEventListener`).
+
+`--family dimse` exits `2` with `family not supported`. The DIMSE flags
+`--access-policy`, `--policy-target`, and `--association-listener` are not
+recognized.
+
 
 ---
 
@@ -162,13 +178,11 @@ dicoogle-plugin-bootstrap version              # tool + template-lock versions
 
 | Flag | Applies to | Meaning |
 |---|---|---|
-| `--family storage\|query-index\|listener\|dimse` | all Java | Required. |
+| `--family storage\|query-index\|listener` | all Java | Required. |
 | `--readable --writable --listable --locator` | `storage` | Capabilities. Zero flags → `--readable`. `--listable` adds readable. `--locator` adds `DicomInstanceLocator`. |
 | `--ingest --query --move --maintenance --settings` | `query-index` | At least one is required. `--settings` implies the `QueryIndexPlugin` marker. |
 | `--locator` | `query-index` | **Rejected with exit `2`.** Only storage plugins feed `List<DicomInstanceLocator>` on HEAD (D1). |
 | `--ingest` / `--retrieve` | `listener` | Exactly one is required. The two kinds use different domain/prefix/type/artifact mappings (§3.5). |
-| `--access-policy` / `--association-listener` | `dimse` | At least one is required. |
-| `--policy-target cfind,cmove,association` | `dimse --access-policy` | Optional; default `cfind`. Multi-target is supported in v1. Comma-separated; one class is generated per target because `DimseAccessPolicy<R>` cannot be implemented twice with different type arguments. |
 | `--package <pkg>` | Java | Override default `org.dicoogle.<domain>.<id-without-hyphens>`. |
 | `--scheme <scheme>` | `storage` | Default is the plugin id. Must match `^[a-z][a-z0-9+.-]*$`. |
 
@@ -224,17 +238,6 @@ dicoogle-plugin-bootstrap java \
 ```
 
 The ingest example derives `org.dicoogle.query.audit`, `dicoogle-next-query-audit`, `app.query.audit`, type `query-index`, class `AuditIngestListener`. The retrieve example derives `org.dicoogle.service.metrics`, `dicoogle-next-service-metrics`, `app.service.metrics`, type `service`, class `MetricsRetrieveListener`. See §3.5 and §5.2.
-
-#### Java DIMSE
-
-```bash
-dicoogle-plugin-bootstrap java \
-  --family dimse \
-  --id access-rules \
-  --access-policy --policy-target cfind,cmove \
-  --association-listener \
-  --out /tmp/access-rules
-```
 
 #### Web, one example per hook
 
@@ -364,7 +367,7 @@ If “one config file” is interpreted literally as template bodies inside one 
 | `{{packagePath}}` | `package` with `.` → `/` | `org/dicoogle/storage/mydicomstore` |
 | `{{ClassName}}` | Pascal(id) + family suffix | `MyDicomStoreStoragePlugin` |
 | `{{artifactId}}` | `dicoogle-next-<domain>-<id>` | `dicoogle-next-storage-my-dicom-store` |
-| `{{domain}}` | family domain; listener kind decides `query` vs `service` | `storage`, `query`, `service`, `dimse` |
+| `{{domain}}` | family domain; listener kind decides `query` vs `service` | `storage`, `query`, `service` |
 | `{{pluginType}}` | single metadata type token | `storage`, `query-index`, `service`, `multi` |
 | `{{configPrefix}}` | `app.<domain>.<id>` | `app.storage.my-dicom-store` |
 | `{{configName}}` | id | `my-dicom-store` |
@@ -458,21 +461,11 @@ Rationale, verified in code:
 
 `--ingest` class implements `StorageIngestEventListener` and has metadata type `query-index`. `--retrieve` class implements `StorageRetrieveEventListener` and has metadata type `service`; it is not in `PluginRegistry`. The YAML snippet in the generated README uses `app.query.<id>` for ingest and `app.service.<id>` for retrieve. Both listener stubs record events in fields and are exercised by passing tests per §3.10.
 
-### 3.6 Java DIMSE files
+### 3.6 DIMSE files (descoped)
 
-| Generated file | Source in dicoogle-next | Variation |
-|---|---|---|
-| `pom.xml` | `backend/plugins/dicoogle-next-query-file/pom.xml:1-45` pattern | SDK + Spring + JUnit; dcm4che-core test scope for policy request construction. |
-| `.../{{ClassName}}CFindPolicy.java` | `DimseAccessPolicy.java:23-31`; consumer `CFindService.java:38`, `:48`, `:157-163` | `--access-policy --policy-target cfind` |
-| `.../{{ClassName}}CMovePolicy.java` | `DimseAccessPolicy.java:23-31`; consumer `CMoveService.java:31`, `:42`, `:135-141` | `--access-policy --policy-target cmove` |
-| `.../{{ClassName}}AssociationPolicy.java` | `DimseAccessPolicy.java:23-31`; consumer `DimseCStoreServer.java:42`, `:335-341` | `--access-policy --policy-target association` |
-| `.../{{ClassName}}AssociationListener.java` | `DimseAssociationEventListener.java:22-51`; consumer `DimseCStoreServer.java:41`, `:291-358` | `--association-listener` |
-| `.../{{ClassName}}Config.java` | `DimseCStoreConfig.java:45-103` injection pattern | One `@Bean` per policy/listener; `@ConditionalOnProperty`. |
-| `.../{{ClassName}}Properties.java` | `FileReadWriteStorageProperties.java:5-34` simplified | `enabled` only. |
-| `src/test/java/.../{{ClassName}}*Test.java` | New tests, direct instantiation | One passing test per generated policy/listener. Policy stubs return a real `Decision`; association-listener stubs record the event. No exercised path throws. |
-| `README.md` | New template | Explains policy targets, association scope, no metadata for pure policies. |
-
-`--policy-target` is optional and defaults to `cfind` (D2). A comma-separated list generates one policy class per target in v1; `cfind,cmove,association` generates all three. Policy and association-listener methods are minimal working stubs per §3.10; no exercised method throws.
+DIMSE generation is intentionally not offered. No `DimseAccessPolicy` or
+`DimseAssociationEventListener` templates, flags, validation, tests, or plans
+are generated. See §1.4 for rationale.
 
 ### 3.7 Web files
 
@@ -524,7 +517,6 @@ All Java templates use `@ConditionalOnProperty(prefix = "{{configPrefix}}", name
 | query-index | `true` | `true` | `app.query.<id>` |
 | listener `--ingest` | `true` | `true` | `app.query.<id>` |
 | listener `--retrieve` | `true` | `true` | `app.service.<id>` |
-| dimse | `true` | `true` | `app.dimse.<id>` |
 
 Storage defaults to disabled because a second storage plugin with a colliding scheme can change routing. Its default scheme is the plugin id, not `file`.
 
@@ -554,8 +546,6 @@ Generated Java stubs are **minimal working implementations**, not placeholders t
 | query-index maintenance | `indexedDocuments()` counts the in-memory entries; `indexPath` adds an entry for the URI and `unindexPath` removes it. | Count changes after `indexPath` and `unindexPath`. |
 | query-index settings | Reads/writes the generated properties object. | Getter reflects setter values. |
 | listener ingest/retrieve | Records the last event and a count; callbacks return normally. | Construct an event, call the callback, assert the recorded event. |
-| DIMSE policy | Returns a real `DimseAccessPolicy.Decision` based on a simple stub rule (e.g. allow all, or allow when an AE field is non-blank). | `evaluate()` returns a non-null decision with the expected `allowed` value. |
-| DIMSE association listener | Records the last event and a count. | Construct an event, call the callback, assert the recorded event. |
 
 Rules:
 
@@ -628,7 +618,6 @@ Web hook fragments work the same way: each hook contributes its method, imports,
 | storage | Always one concrete storage interface (`ReadableStoragePlugin`, `WritableStoragePlugin`, or `ListableStoragePlugin`). `--listable` subsumes `--readable`. `--locator` adds `DicomInstanceLocator` methods. Never add `QueryIndexStorageLocator` from the storage family. |
 | query-index | At least one of ingest/query/move/maintenance/settings. `--settings` alone adds `QueryIndexPlugin`. `--maintenance` already extends `QueryIndexPlugin`. No `--locator`. |
 | listener | Exactly one of `--ingest`/`--retrieve`. Ingest emits `StorageIngestEventListener` with `query` domain, `app.query.<id>`, type `query-index`, `IngestListener`; retrieve emits `StorageRetrieveEventListener` with `service` domain, `app.service.<id>`, type `service`, `RetrieveListener`. The two mappings are applied before rendering, so no file mixes identities. |
-| dimse | `--access-policy` emits one class per target because `DimseAccessPolicy<QueryService.QueryRequest>`, `DimseAccessPolicy<QueryMoveService.MoveRequest>`, and `DimseAccessPolicy<DimseAssociationAcceptedEvent>` share the same erasure. `--association-listener` emits a separate class. Both may coexist. Pure policies get no `metadata()`; association listener gets metadata because it extends `QueryIndexPlugin`. |
 | web | Hooks are independent methods on one default-exported object. Any subset is valid. Components only for query-filter, result-renderer, route, settings. Icons are `createElement` so entry stays `index.ts`. |
 
 ### 4.4 Post-render validators
@@ -706,10 +695,6 @@ Class suffixes:
 | query-index | `QueryIndexPlugin` |
 | listener ingest | `IngestListener` |
 | listener retrieve | `RetrieveListener` |
-| DIMSE C-FIND policy | `CFindPolicy` |
-| DIMSE C-MOVE policy | `CMovePolicy` |
-| DIMSE association policy | `AssociationPolicy` |
-| DIMSE association listener | `AssociationListener` |
 
 Config/properties/test names derive from `ClassName`: `<ClassName>Config`, `<ClassName>Properties`, `<ClassName>Test`.
 
@@ -722,7 +707,6 @@ Config/properties/test names derive from `ClassName`: `<ClassName>Config`, `<Cla
 - `--package`: `^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$`; every segment must be a valid non-reserved Java identifier.
 - `--scheme`: `^[a-z][a-z0-9+.-]*$`; default id.
 - `--api-version`: only `1` or `1.0`.
-- `--policy-target`: subset of `cfind,cmove,association`, no duplicates; optional, default `cfind`.
 - `--hooks`: subset of the seven supported hooks, no duplicates; at least one.
 - `--license`: `none` or a non-empty SPDX identifier without whitespace/newlines (at most 64 characters). It emits one comment line, never a full license body.
 - `--out`: may resolve inside dicoogle-next only if the final target is a new directory; the tool never writes into an existing repository file (D11).
@@ -773,7 +757,6 @@ Dependencies by family:
 | storage | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `spring-boot-test`; `assertj-core` (required to compile `ApplicationContextRunner` use) |
 | query-index | SDK; `dcm4che-core`; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `spring-boot-test`; `assertj-core` |
 | listener | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter` |
-| dimse | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `dcm4che-core` test scope for policy request tests |
 
 Do not add shade/assembly, `Main-Class`, relocation, or a custom `finalName`. No bundled backend POM uses them, and plugin jars are plain Maven jars baked into the Spring Boot fat jar (`backend/plugins/*/target/*.jar`; `backend/dicoogle-next/target/*.jar`).
 
@@ -885,7 +868,7 @@ dicoogle-plugin-bootstrap/
 3. Review the diff by hand. Pay special attention to:
    - `PluginMetadata` shape (single `type` vs `List<String> types`),
    - `PluginRegistry` dedupe,
-   - storage/query/listener/dimse interfaces and consumer signatures,
+   - storage/query/listener interfaces and consumer signatures,
    - `plugin.config.json` schema and `apiVersion`,
    - `WebUIPlugin` getters and props,
    - POM dependency/version changes.
@@ -914,7 +897,6 @@ For each family and meaningful combination:
 - storage: `--readable`, `--writable`, `--listable`, `--locator`, `--readable --writable`, `--writable --locator`, all flags.
 - query-index: `--ingest`, `--query`, `--move`, `--maintenance`, `--settings`, all flags; plus a negative test that `--locator` exits `2`.
 - listener: `--ingest` (assert `org.dicoogle.query.*`, `app.query.*`, type `query-index`, `*IngestListener`) and `--retrieve` (assert `org.dicoogle.service.*`, `app.service.*`, type `service`, `*RetrieveListener`).
-- dimse: `--access-policy --policy-target cfind`, `cmove`, `association`, multi-target, `--association-listener`, both.
 
 CI procedure per case (automated by `scripts/build-fixtures.mjs`):
 
@@ -1071,7 +1053,7 @@ No generated docs modify dicoogle-next’s own documentation.
 | R5 | Issue-58 (`fix/issue-58-plugin-registration`, `e62ba3e`) is unmerged and changes `type` to `List<String> types` plus dedupe. | Future template refresh changes metadata shape. | Pin to HEAD `cdfbff7`; keep type in one variable; refresh procedure explicitly checks this. |
 | R6 | Pure query-index `QueryIndexStorageLocator` is not injected into `List<DicomInstanceLocator>` on HEAD; only storage plugins are (`PluginRuntimeConfig.java:84-90`). | A query-index `--locator` plugin would compile but not be used. | D1: `--locator` on query-index exits `2`; only storage locator is generated; document the SDK/implementation mismatch; revisit if a future branch fixes it. |
 | R7 | `QueryIndexSettings` is not a `QueryIndexPlugin`; the controller takes `findFirst()` (`IndexSettingsController.java:25-31`). | Settings-only or multiple settings plugins may be ignored/ambiguous. | `--settings` adds `QueryIndexPlugin`; document single-settings assumption; warn in README. |
-| R8 | Retrieve listener fires only for DICOMweb retrieval; ingest listener only for DIMSE C-STORE; association listener only for C-STORE associations. | Developer expectations may not match actual events. | State the exact scope in the generated README and in the CLI family help. D13 also makes the two listener kinds visibly different in package, artifact, prefix, and metadata type. |
+| R8 | Retrieve listener fires only for DICOMweb retrieval; ingest listener only for DIMSE C-STORE. | Developer expectations may not match actual events. | State the exact scope in the generated README and in the CLI family help. D13 also makes the two listener kinds visibly different in package, artifact, prefix, and metadata type. |
 | R9 | `ServicePlugin` and `MlProviderPlugin` have no direct consumers. | Generating them produces dead code. | Exclude both families. `--retrieve` remains because its subinterface is consumed. |
 | R10 | Parent POM `relativePath` cannot satisfy both reactor and arbitrary-path builds with a single hard-coded path without checks. | Wrong parent or non-resolvable parent. | Always emit `../../pom.xml`; validate the target; if absent, fall back to installed parent; if wrong GAV, exit `2`. |
 | R11 | SDK/parent are local-only as verified; no `distributionManagement`. | Standalone builds fail on a clean machine. | Document `mvn install` of parent + SDK; CI installs them; mark remote publication UNVERIFIED. |
@@ -1122,9 +1104,10 @@ Each milestone is independently testable.
    - Ingest/query/move/maintenance/settings fragments; settings-marker rule.
    - Test: each capability and all-capabilities build/test.
 
-7. **Java listener + DIMSE templates + compile fixture.**
-   - Ingest listener (`query` domain, `app.query`, type `query-index`) and retrieve listener (`service` domain, `app.service`, type `service`); C-FIND/C-MOVE/association policies; association listener.
-   - Test: each case builds/tests; multi-target policy generates separate classes; listener kind mapping is asserted in generated POM/package/config/metadata.
+7. **Listener family templates + compile fixture.**
+   - Ingest listener (`query` domain, `app.query`, type `query-index`, `IngestListener`) and retrieve listener (`service` domain, `app.service`, type `service`, `RetrieveListener`).
+   - DIMSE remains descoped: no policy or association-listener generation.
+   - Test: each listener kind builds/tests; kind mapping is asserted in generated POM/package/config/metadata; event scope references are checked.
 
 8. **Parent POM strategy + standalone/in-repo harness.**
    - POM templates, relativePath validation, dependency matrix.
@@ -1175,8 +1158,10 @@ Implementation notes:
 - Generated listener READMEs must use the kind-specific YAML prefix:
   `app.query.<id>` for ingest, `app.service.<id>` for retrieve.
 - The generated metadata type remains a single string in `{{pluginType}}`.
-- The event scope is unchanged: ingest is DIMSE C-STORE only; retrieve is
-  DICOMweb retrieval only.
+- The event scope is unchanged: ingest is DIMSE C-STORE only (`CStoreService.java:364`,
+  `CStoreService.java:382`); retrieve is DICOMweb retrieval only
+  (`DicomwebRetrieveService.java:369`, `DicomwebRetrieveService.java:382`).
+- Generated listener READMEs repeat those exact file:line references.
 - `templates/lock.json` records the same mapping under `listenerIdentities`.
   The lock verifier cross-checks domain, package template, artifactId template,
   config prefix template, metadata type, and class suffix against
@@ -1207,18 +1192,18 @@ the no-rewrite hash check.
 `--settings` emits a warning in the generated README, `--help`, and CLI stderr:
 
 > `IndexSettingsController` selects the FIRST `QueryIndexSettings` provider
-> (`IndexSettingsController.java:25-31`), so a default-enabled generated plugin
-> can displace Lucene's provider once wired. Set `enabled=false` or disable the
-> other provider.
+> (`IndexSettingsController.java:25-31`). Currently Lucene wins because
+> `LuceneQueryConfig` has `@Order(0)` (`LuceneQueryConfig.java:16`), but bean
+> ordering is not a stable contract, so a default-enabled generated provider
+> could take over if ordering changes. Set `enabled=false` on one of them to be
+> safe.
 
-The warning is intentionally conservative. In a temp checkout at the pinned
+The warning reflects observed behavior. In a temp checkout at the pinned
 commit with the all-flags query-index module wired next to Lucene, a focused
 probe test observed Lucene as the selected provider in three consecutive runs
 (`org.dicoogle.query.lucene.LuceneQueryIndexPlugin`, index path
-`./target/test-index`). Lucene's config is ordered with `@Order(0)`
-(`LuceneQueryConfig.java:16`), so it currently wins list ordering. Bean ordering
-is not a stable contract; the warning remains valid for other provider sets,
-orders, or future changes.
+`./target/test-index`). Lucene's `@Order(0)` currently wins list ordering, but
+ordering is not a stable contract, so the warning remains necessary.
 
 ### Registry and routing evidence
 
@@ -1239,3 +1224,64 @@ Generated query-index tests use `ApplicationContextRunner` with the generated
 config. They assert `startCount() == 1` after context refresh and
 `stopCount() == 1` after context close, proving `@Bean(initMethod="start",
 destroyMethod="stop")` is wired exactly once.
+
+---
+
+## Addendum C — Listener family evidence (milestone 7)
+
+The listener family is implemented; DIMSE is descoped.
+
+### Generated listener cases
+
+`scripts/build-fixtures.mjs` now includes:
+
+- `--ingest` and `--retrieve`
+- `ingest-long` and `retrieve-long` variants
+- `spotless:check`, generated tests, and no-rewrite hash checks for every case
+- full reactor with both listener kinds wired as app dependencies
+- standalone ingest and retrieve builds
+
+Observed matrix results:
+
+```text
+=== listener case: ingest ===
+case ingest: spotless:check + tests OK, no rewrite
+=== listener case: retrieve ===
+case retrieve: spotless:check + tests OK, no rewrite
+=== listener case: ingest-long ===
+case ingest-long: spotless:check + tests OK, no rewrite
+=== listener case: retrieve-long ===
+case retrieve-long: spotless:check + tests OK, no rewrite
+```
+
+Each generated listener test class runs 5 tests: metadata, enabled-context
+registration, disabled-context absence, callback recording, and consumed-list
+visibility.
+
+### Event scope verification
+
+- Ingest: `StorageIngestEventListener` is injected into `CStoreService`
+  (`CStoreService.java:35-70`) and dispatched at
+  `CStoreService.java:364` and `CStoreService.java:382`. A repository-wide search
+  found no DICOMweb STOW dispatch.
+- Retrieve: `StorageRetrieveEventListener` is injected into
+  `DicomwebRetrieveService` (`DicomwebRetrieveService.java:43-56`) and
+  dispatched at `DicomwebRetrieveService.java:369` and
+  `DicomwebRetrieveService.java:382`. A repository-wide search found no DIMSE
+  C-MOVE dispatch.
+
+Generated listener READMEs include those exact references and state the negative
+scope explicitly.
+
+### App-context list evidence
+
+Temp checkout with the listener ingest/retrieve modules wired:
+
+```text
+PROBE_INGEST_LISTENERS=[fixture-qall, fixture-lst-ing]
+PROBE_RETRIEVE_LISTENERS=[fixture-lst-ret]
+```
+
+`fixture-qall` is the all-flags query-index fixture, which also implements
+`StorageIngestEventListener`; the dedicated listener module is
+`fixture-lst-ing`. The retrieve listener appears only in the retrieve list.

@@ -3,10 +3,10 @@
 Zero-dependency Node ESM CLI that generates plugin boilerplate for
 [dicoogle-next](https://github.com/dicoogle/dicoogle-next).
 
-> **Status:** milestone 6 (query-index family). The `java` command generates
-> working, Google-Java-Format-clean storage and query-index Maven modules with
-> Spring context tests, safe writes, and dry-run support. Listener, DIMSE,
-> `web`, and `init` are still stubs.
+> **Status:** milestone 7 (listener family). The `java` command generates
+> working, Google-Java-Format-clean storage, query-index, and listener Maven
+> modules with Spring context tests, safe writes, and dry-run support. DIMSE is
+> intentionally descoped. `web` and `init` are still stubs.
 
 ## Requirements
 
@@ -29,7 +29,7 @@ After `npm link`, the same commands are available as
 | Command | Description |
 |---|---|
 | `init` | Interactive wizard (not implemented) |
-| `java` | Generate a Java module; storage and query-index are implemented |
+| `java` | Generate a Java module; storage, query-index, and listener are implemented |
 | `web` | Validate input and derive web naming (generation not implemented yet) |
 | `list` | Show supported families, web hooks, and the verified template pin |
 | `version` | Show tool, Node, and verified template-lock versions |
@@ -42,12 +42,11 @@ and, where meaningful, includes a suggested valid form.
 - Plugin ids: lowercase kebab-case, 1–64 characters, not a Java reserved word
   after hyphen removal. `../x` suggests `x`; `a/b` suggests `a-b`; `class`
   suggests `class-plugin`.
-- Java families: `storage`, `query-index`, `listener`, `dimse`.
+- Java families: `storage`, `query-index`, `listener`.
 - Listener identity follows D13: `--ingest` → `query` domain, `app.query.<id>`,
   type `query-index`, `IngestListener`; `--retrieve` → `service` domain,
   `app.service.<id>`, type `service`, `RetrieveListener`.
 - Storage defaults to `enabled=false` and `scheme=<id>`.
-- DIMSE policy targets default to `cfind`; multi-target is supported.
 - Name, description, and author are length-checked; plugin versions are
   semver-like; packages, schemes, SPDX license ids, API versions, policy targets,
   and web hooks are validated.
@@ -107,9 +106,41 @@ and visibility as the list types consumed by the app (`QueryService`,
 
 `--settings` prints a displacement warning in the README, `--help`, and CLI
 stderr: `IndexSettingsController` selects the first `QueryIndexSettings`
-provider, so a default-enabled generated plugin can displace Lucene's provider;
-set `enabled=false` or disable the other provider. Generated tests also assert
-`start()` and `stop()` run exactly once.
+provider. Currently Lucene wins because `LuceneQueryConfig` has `@Order(0)`
+(`LuceneQueryConfig.java:16`), but bean ordering is not a stable contract, so a
+default-enabled generated provider could take over if ordering changes. Set
+`enabled=false` on one of them to be safe. Generated tests also assert `start()`
+and `stop()` run exactly once.
+
+## Listener generation
+
+```bash
+node bin/dicoogle-plugin-bootstrap.mjs java \
+  --id my-audit --family listener --ingest \
+  --out /tmp/dicoogle-next-query-my-audit
+
+node bin/dicoogle-plugin-bootstrap.mjs java \
+  --id my-audit --family listener --retrieve \
+  --out /tmp/dicoogle-next-service-my-audit
+```
+
+Exactly one of `--ingest` or `--retrieve` is required. Ingest uses the `query`
+domain, `app.query.<id>`, type `query-index`, and the `IngestListener` suffix.
+Retrieve uses the `service` domain, `app.service.<id>`, type `service`, and the
+`RetrieveListener` suffix.
+
+Event scope is intentionally narrow:
+
+- Ingest fires only from DIMSE C-STORE (`CStoreService.java:364`,
+  `CStoreService.java:382`). DICOMweb STOW does not invoke it.
+- Retrieve fires only from DICOMweb retrieval
+  (`DicomwebRetrieveService.java:369`, `DicomwebRetrieveService.java:382`).
+  DIMSE C-MOVE does not invoke it.
+
+DIMSE generation is descoped: `DimseAccessPolicy` and
+`DimseAssociationEventListener` exist in dicoogle-next but are not generated
+because they are absent from classic Dicoogle and access policies can deny
+requests. `--family dimse` exits `2`.
 
 ## Template lock
 
@@ -132,9 +163,9 @@ npm run verify:templates
 node scripts/verify-templates.mjs --lock templates/lock.json --templates templates
 ```
 
-Template bodies currently cover storage and query-index POM, README, config, and
-properties files. Plugin classes and tests are composed from pinned fragments.
-Listener and DIMSE templates arrive in later milestones.
+Template bodies currently cover storage, query-index, and listener POM, README,
+config, and properties files. Plugin classes and tests are composed from pinned
+fragments. DIMSE is descoped.
 
 ## Exit codes
 
@@ -165,6 +196,8 @@ node --test test/fs.test.mjs
 node --test test/parent.test.mjs
 node --test test/query-index-model.test.mjs
 node --test test/query-index-plan.test.mjs
+node --test test/listener-model.test.mjs
+node --test test/listener-plan.test.mjs
 ```
 
 The CLI has no runtime dependencies. The parser, validation, naming, renderer,
@@ -181,7 +214,7 @@ node scripts/build-fixtures.mjs --repo /path/to/dicoogle-next --keep
 ## Design
 
 The authoritative design is [`docs/design.md`](docs/design.md), including
-Addendum A for listener identity. Storage and query-index generation, the
-renderer, lock verification, dry-run/safe-write tooling, and the Java compile
-fixture are implemented; listener/DIMSE, web generation, and the interactive
-wizard remain.
+Addendum A for listener identity. Storage, query-index, and listener generation,
+the renderer, lock verification, dry-run/safe-write tooling, and the Java compile
+fixture are implemented; DIMSE, web generation, and the interactive wizard
+remain descoped/out of scope.
