@@ -8,7 +8,10 @@ import {
   formatError,
   normalizeError,
 } from "./errors.mjs";
-import { loadLock } from "./lock.mjs";
+import { formatDryRunTree, writePlan } from "./fs.mjs";
+import { DEFAULT_TEMPLATES_DIR, loadLock } from "./lock.mjs";
+import { buildStorageModel } from "./model.mjs";
+import { buildStoragePlan, materializePlan } from "./plan.mjs";
 import { validateGenerationOptions } from "./validate.mjs";
 
 const PACKAGE_JSON_URL = new URL("../package.json", import.meta.url);
@@ -20,9 +23,9 @@ export const TOOL_VERSION = packageJson.version;
 export const HELP_TEXT = `Usage: dicoogle-plugin-bootstrap <command> [flags]
 
 Commands:
-  init      Interactive wizard (milestone 1: not implemented)
-  java      Generate a Java Maven module (milestone 1: not implemented)
-  web       Generate a web UI plugin folder (milestone 1: not implemented)
+  init      Interactive wizard (not implemented)
+  java      Generate a Java Maven module (storage implemented)
+  web       Generate a web UI plugin folder (not implemented)
   list      Show families, web hooks, and template pin status
   version   Show tool, Node, and template-lock versions
 
@@ -157,11 +160,52 @@ export async function main(
         io.stdout.write(formatList(loadLock()));
         return EXIT_CODES.OK;
       }
+      case "java": {
+        if (validated.values?.family !== "storage") {
+          io.stdout.write(
+            `dicoogle-plugin-bootstrap: java generation for family ` +
+              `"${validated.values?.family ?? "unknown"}" is not implemented yet ` +
+              "(storage only).\n",
+          );
+          return EXIT_CODES.OK;
+        }
+
+        const lock = loadLock();
+        const model = buildStorageModel({
+          flags: parsed.flags,
+          values: validated.values,
+        });
+        const plan = buildStoragePlan(model, lock);
+
+        if (parsed.flags.dryRun === true) {
+          io.stdout.write(
+            formatDryRunTree({
+              out: model.out,
+              files: plan.files,
+              force: parsed.flags.force === true,
+            }),
+          );
+          return EXIT_CODES.OK;
+        }
+
+        const files = materializePlan(plan, {
+          templatesDir: DEFAULT_TEMPLATES_DIR,
+        });
+        const result = writePlan({
+          out: model.out,
+          files,
+          force: parsed.flags.force === true,
+        });
+
+        io.stdout.write(
+          `created ${files.length} file(s) in ${result.root}\n`,
+        );
+        return EXIT_CODES.OK;
+      }
       case "init":
-      case "java":
       case "web": {
         io.stdout.write(
-          `dicoogle-plugin-bootstrap: ${parsed.command} generation is not implemented yet (milestone 2: validation/naming).\n`,
+          `dicoogle-plugin-bootstrap: ${parsed.command} generation is not implemented yet (milestone 4: storage plan).\n`,
         );
         return EXIT_CODES.OK;
       }
