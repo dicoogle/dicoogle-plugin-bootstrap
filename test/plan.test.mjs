@@ -3,15 +3,21 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { fileURLToPath } from "node:url";
 
+import { EXIT_CODES } from "../src/errors.mjs";
 import { formatDryRunTree } from "../src/fs.mjs";
 import { loadLock } from "../src/lock.mjs";
-import { buildStoragePlan, materializePlan } from "../src/plan.mjs";
+import {
+  buildStoragePlan,
+  escapeXml,
+  materializePlan,
+} from "../src/plan.mjs";
 import { STORAGE_CASES, storageModel } from "./helpers.mjs";
 
 const FIXTURE_DIR = path.join(
@@ -76,6 +82,63 @@ test("composed storage class snapshots match for every capability case", () => {
   }
 });
 
+
+test("POM output escapes XML special characters", () => {
+  const model = storageModel(
+    { readable: true },
+    {
+      name: `A & B <C> "D" 'E'`,
+      description: `F & G <H> "I" 'J'`,
+    },
+  );
+  const files = materializePlan(buildStoragePlan(model, loadLock()));
+  const pom = files.find((file) => file.path === "pom.xml");
+
+  assert.ok(pom);
+  assert.ok(
+    pom.content.includes(
+      "<name>A &amp; B &lt;C&gt; &quot;D&quot; &apos;E&apos;</name>",
+    ),
+    pom.content,
+  );
+  assert.ok(
+    pom.content.includes(
+      "<description>F &amp; G &lt;H&gt; &quot;I&quot; &apos;J&apos;</description>",
+    ),
+    pom.content,
+  );
+});
+
+test("escapeXml escapes the five XML-sensitive characters", () => {
+  assert.equal(
+    escapeXml(`& < > " '`),
+    "&amp; &lt; &gt; &quot; &apos;",
+  );
+});
+
+test("generated tests include enabled and default Spring context checks", () => {
+  const model = storageModel({ readable: true });
+  const files = materializePlan(buildStoragePlan(model, loadLock()));
+  const testFile = files.find((file) =>
+    file.path.endsWith(`${model.className}Test.java`),
+  );
+  const pom = files.find((file) => file.path === "pom.xml");
+
+  assert.ok(testFile);
+  assert.match(testFile.content, /ApplicationContextRunner/);
+  assert.match(testFile.content, /registersBeanWhenEnabled/);
+  assert.match(testFile.content, /registersNothingByDefault/);
+  assert.match(
+    testFile.content,
+    /withPropertyValues\("app\.storage\.my-store\.enabled=true"\)/,
+  );
+  assert.match(testFile.content, /getBeansOfType\(MyStoreStoragePlugin\.class\)/);
+
+  assert.ok(pom);
+  assert.match(pom.content, /<artifactId>spring-boot-test<\/artifactId>/);
+  assert.match(pom.content, /<artifactId>assertj-core<\/artifactId>/);
+});
+
 test("materialized storage plans are complete and token-free", () => {
   for (const [name, flags] of STORAGE_CASES) {
     const model = storageModel(flags);
@@ -98,4 +161,30 @@ test("materialized storage plans are complete and token-free", () => {
     assert.match(testFile.content, /class MyStoreStoragePluginTest/);
     assert.match(testFile.content, /@TempDir Path tempDir;/);
   }
+});
+
+test("materializePlan surfaces render errors with exit 5", (t) => {
+  const templatesDir = mkdtempSync(
+    path.join(tmpdir(), "dicoogle-plan-render-"),
+  );
+  t.after(() => rmSync(templatesDir, { recursive: true, force: true }));
+  writeFileSync(path.join(templatesDir, "bad.tmpl"), "{{missing}}\n");
+
+  const plan = {
+    root: "unused",
+    model: storageModel({ readable: true }),
+    files: [
+      {
+        path: "README.md",
+        kind: "template",
+        template: "bad.tmpl",
+        data: {},
+      },
+    ],
+  };
+
+  assert.throws(
+    () => materializePlan(plan, { templatesDir }),
+    (error) => error.exitCode === EXIT_CODES.TEMPLATE,
+  );
 });

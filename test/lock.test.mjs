@@ -156,7 +156,7 @@ test("undeclared placeholder exits 5", (t) => {
     const templatePath = firstTemplatePath(lock);
     lock.templates[templatePath].placeholders =
       lock.templates[templatePath].placeholders.filter(
-        (placeholder) => placeholder !== "description",
+        (placeholder) => placeholder !== "descriptionXml",
       );
   });
 
@@ -170,7 +170,7 @@ test("undeclared placeholder exits 5", (t) => {
   assert.equal(result.status, EXIT_CODES.TEMPLATE);
   assert.match(
     result.stderr,
-    /template uses undeclared placeholder\(s\): .*description/,
+    /template uses undeclared placeholder\(s\): .*descriptionXml/,
   );
 });
 
