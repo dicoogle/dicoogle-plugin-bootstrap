@@ -9,7 +9,7 @@ import {
   listenerValues,
 } from "./helpers.mjs";
 
-test("listener identities follow Addendum A", () => {
+test("listener identities use kind-specific domains and types", () => {
   const ingest = listenerModel({ ingest: true });
 
   assert.equal(ingest.listenerKind, "ingest");
