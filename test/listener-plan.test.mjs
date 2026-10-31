@@ -102,6 +102,7 @@ test("listener materialized plans are complete and token-free", () => {
     assert.match(testFile.content, /ApplicationContextRunner/);
     assert.match(testFile.content, /registersBeanWhenEnabled/);
     assert.match(testFile.content, /registersNothingWhenDisabled/);
+    assert.match(testFile.content, /registersNothingByDefault/);
 
     assert.ok(pom, name);
     assert.match(pom.content, /<artifactId>spring-boot-test<\/artifactId>/);
@@ -168,4 +169,40 @@ test("listener long-id output stays within 100 columns", () => {
   assert.ok(
     mainClass.content.split("\n").every((line) => line.length <= 100),
   );
+});
+
+
+test("listener callbacks are exception-safe and documented", () => {
+  for (const kind of ["ingest", "retrieve"]) {
+    const model = listenerModel({ [kind]: true });
+    const files = materializePlan(
+      buildListenerPlan(model, loadLock()),
+    );
+    const testFile = files.find((file) =>
+      file.path.endsWith(`${model.className}Test.java`),
+    );
+    const readme = files.find((file) => file.path === "README.md");
+
+    assert.ok(testFile, kind);
+    assert.match(
+      testFile.content,
+      /callbacksDoNotRethrowInternalFailures/,
+      kind,
+    );
+
+    assert.ok(readme, kind);
+    assert.match(readme.content, /Callback safety/, kind);
+    assert.match(readme.content, /never rethrows/, kind);
+
+    if (kind === "ingest") {
+      assert.match(readme.content, /CStoreService\.java:364/, kind);
+      assert.match(readme.content, /CStoreService\.java:233-248/, kind);
+    } else {
+      assert.match(
+        readme.content,
+        /DicomwebRetrieveService\.java:369/,
+        kind,
+      );
+    }
+  }
 });

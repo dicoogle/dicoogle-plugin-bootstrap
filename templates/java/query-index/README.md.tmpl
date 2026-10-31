@@ -25,21 +25,58 @@ Add this to the host `application.yml` (the tool never edits it):
 app:
   query:
     {{id}}:
-      enabled: true
+      # set enabled: true to activate
+      enabled: false
       root-dir: ./data/{{id}}
       index-name: {{id}}
       watch-enabled: false
 ```
 
-{{#if settings}}
-> **Warning:** `--settings` adds a `QueryIndexSettings` provider.
+{{#if ingest}}
+> **Callback safety:** `CStoreService` dispatches ingest events with
+> `listeners.forEach` at `CStoreService.java:364` and
+> `CStoreService.java:382`; the loop has no per-listener exception isolation.
+> A throwing listener aborts the remaining listeners, and a success callback
+> exception can turn a successful C-STORE into a failure
+> (`CStoreService.java:233-248`). This generated callback catches and logs
+> `RuntimeException` and never rethrows.
+{{/if}}{{#if maintenance}}
+> **Maintenance isolation:** `QueryIndexMaintenanceService.indexPaths` and
+> `unindexPaths` apply to **all** maintenance providers when no plugin id is
+> given (`QueryIndexMaintenanceService.java:45-67`). This stub only updates its
+> own path set and counter; it never adds query/move results.
+{{/if}}{{#if settings}}
+> **Settings selection:** `--settings` adds a `QueryIndexSettings` provider.
 > `IndexSettingsController` selects the **first** provider
-> (`IndexSettingsController.java:25-31`). Currently Lucene wins because
+> (`IndexSettingsController.java:25-31`). Lucene currently wins because
 > `LuceneQueryConfig` has `@Order(0)` (`LuceneQueryConfig.java:16`), but bean
-> ordering is not a stable contract, so a default-enabled generated provider
-> could take over if ordering changes. Set `enabled=false` on one of them to be
-> safe.
+> ordering is not a stable contract. Only that first provider is exposed and
+> mutated.
 {{/if}}
+## Stub safety
+
+This module is disabled by default. Set `enabled: true` to activate it.
+
+`query()` and `resolve()` return an empty list until real matching is
+implemented. They must never return recorded entries that do not match the
+request. The TODO in each method explains which request fields to match.
+
+`--ingest` records entries in an in-memory map for tests and for the future
+implementation. The map is exposed only through package-private accessors and
+is not returned by `query()` or `resolve()`.
+
+## How routing finds your plugin
+
+- Empty `app.dimse.dim-providers` and QIDO-RS without a `provider` parameter
+  mean **all** query providers.
+- Provider names are `metadata().id()`. Unknown provider names are silently
+  dropped.
+- Queries are fanned out to all selected providers and merged. Query results
+  are deduplicated by `StudyInstanceUID|SeriesInstanceUID|SOPInstanceUID`;
+  move candidates are deduplicated by `SOPInstanceUID|location`.
+- There is no router timeout. A blocking stub can hang the request.
+- Provider order is not stable.
+
 ## Build
 
 ### Standalone mode
@@ -84,7 +121,8 @@ cd backend
 
 ## TODO
 
-Replace the in-memory index stubs with the real query/index logic.{{#if licenseSpdx}}
+Implement request matching in `query()` and `resolve()`. Keep the empty-result
+default until then so enabling this plugin cannot add unrelated results.{{#if licenseSpdx}}
 
 ## License
 

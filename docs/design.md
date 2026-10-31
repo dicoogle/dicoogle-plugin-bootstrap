@@ -320,7 +320,7 @@ my-dicom-store/
 
 ### 3.1 Pin file and template storage
 
-The **single pin file** is `templates/lock.json` in the tool repo. It records the pinned dicoogle-next commit, SDK/parent versions, dependency versions, template source paths, SHA-256 hashes, and declared placeholders. Template bodies live under `templates/` as plain files; the lock is the one file that must change when the baseline changes.
+The **single pin file** is `templates/lock.json` in the tool repo. It records the pinned dicoogle-next commit, SDK/parent versions, dependency versions, reserved bundled plugin ids, template source paths, SHA-256 hashes, and declared placeholders. Template bodies live under `templates/` as plain files; the lock is the one file that must change when the baseline changes.
 
 ```json
 {
@@ -514,11 +514,11 @@ All Java templates use `@ConditionalOnProperty(prefix = "{{configPrefix}}", name
 | Family | `enabled` default | `matchIfMissing` | YAML prefix |
 |---|---|---|---|
 | storage | `false` | `false` (must opt in) | `app.storage.<id>` |
-| query-index | `true` | `true` | `app.query.<id>` |
-| listener `--ingest` | `true` | `true` | `app.query.<id>` |
-| listener `--retrieve` | `true` | `true` | `app.service.<id>` |
+| query-index | `false` | `false` (must opt in) | `app.query.<id>` |
+| listener `--ingest` | `false` | `false` (must opt in) | `app.query.<id>` |
+| listener `--retrieve` | `false` | `false` (must opt in) | `app.service.<id>` |
 
-Storage defaults to disabled because a second storage plugin with a colliding scheme can change routing. Its default scheme is the plugin id, not `file`.
+All generated families must opt in. Storage defaults to disabled because a second storage plugin with a colliding scheme can change routing; its default scheme is the plugin id, not `file`. Query-index and listener default to disabled because the current stubs record data but do not implement request matching, and `QueryRouter` fans queries out to all enabled providers. Generated READMEs tell users to set `enabled: true` to activate a module.
 
 ### 3.9 Generated READMEs
 
@@ -542,10 +542,11 @@ Generated Java stubs are **minimal working implementations**, not placeholders t
 | storage writable | Writes bytes under `rootDir` with a safe generated name and returns a `StoredObject`. | `store()` returns an existing location with the expected byte count. |
 | storage listable | Lists direct children and reports directories. | A directory with a file lists that file. |
 | storage locator | Finds an object placed by the test under `rootDir` using the stub’s path convention; returns `Optional.empty()` for unknown ids. | Placed object is located; unknown object returns empty. |
-| query-index ingest/query/move | Keeps an in-memory map keyed by study/series/SOP; query returns stored entries; move resolves their locations. | Ingest an event, then query/move returns the ingested entry. |
-| query-index maintenance | `indexedDocuments()` counts the in-memory entries; `indexPath` adds an entry for the URI and `unindexPath` removes it. | Count changes after `indexPath` and `unindexPath`. |
+| query-index ingest | Records entries in an in-memory map exposed only through package-private accessors. | Ingest an event, then assert the recorded count. |
+| query-index query/move | Returns an empty list with a TODO explaining which request fields to match. Never returns recorded entries unrelated to the request. | Seed/ingest an entry, then assert query/move returns empty while the recorded count stays. |
+| query-index maintenance | `indexedDocuments()` counts its own maintained-path set; `indexPath` adds a path and `unindexPath` removes it. It never writes the ingest map or query/move results. | Count changes after `indexPath`/`unindexPath`; ingest `indexSize()` stays zero. |
 | query-index settings | Reads/writes the generated properties object. | Getter reflects setter values. |
-| listener ingest/retrieve | Records the last event and a count; callbacks return normally. | Construct an event, call the callback, assert the recorded event. |
+| listener ingest/retrieve | Records the last event and a count inside an exception-safe callback that catches/logs `RuntimeException` and never rethrows. | Construct an event, call the callback, assert the recorded event; subclass a helper to throw and assert the callback does not escape. |
 
 Rules:
 
@@ -662,6 +663,7 @@ The final guarantee is compilation in CI; the validators are fast local feedback
 - No leading/trailing hyphen, no consecutive hyphens.
 - No path separators, `..`, whitespace, underscores, dots, or control characters.
 - Must not be a Java reserved word when hyphen-stripped (e.g. `class`, `record`, `package`, `var`, `yield`, `sealed`, `permits`).
+- Must not equal a reserved bundled plugin id from `templates/lock.json` (`reservedPluginIds`): `lucene`, `query-file-rw`, `storage-file-ro`, `storage-file-rw`. QueryRouter keys providers by `metadata().id()` and a duplicate silently overwrites the earlier plugin (`QueryRouter.java:202-210`), so these ids exit `2`.
 - Names that normalize to the same package (e.g. `foo-bar` and `foobar`) are flagged with a warning because the Java package would collide.
 
 Invalid input is rejected with a suggested valid form; it is never silently changed.
@@ -1195,9 +1197,8 @@ the no-rewrite hash check.
 > `IndexSettingsController` selects the FIRST `QueryIndexSettings` provider
 > (`IndexSettingsController.java:25-31`). Currently Lucene wins because
 > `LuceneQueryConfig` has `@Order(0)` (`LuceneQueryConfig.java:16`), but bean
-> ordering is not a stable contract, so a default-enabled generated provider
-> could take over if ordering changes. Set `enabled=false` on one of them to be
-> safe.
+> ordering is not a stable contract. If a generated provider is enabled, only
+> the first provider is exposed and mutated; keep at most one enabled.
 
 The warning reflects observed behavior. In a temp checkout at the pinned
 commit with the all-flags query-index module wired next to Lucene, a focused
@@ -1321,8 +1322,8 @@ generates and wires:
 - two retrieve listeners
 
 All ten modules are added to the temp app and built in the full reactor. A
-generated `BeanCollisionProbeTest` starts the app context with the storage
-modules enabled and asserts the consumed lists contain them. Lucene is disabled
+generated `BeanCollisionProbeTest` starts the app context with the collision
+modules explicitly enabled and asserts the consumed lists contain them. Lucene is disabled
 only for that probe context to avoid its JVM-level write-lock conflict between
 multiple cached test contexts.
 
@@ -1337,10 +1338,10 @@ Observed collision probe output:
 ```text
 COLLISION_STORAGE=[storage-file-ro, collision-st-a, collision-st-b, foo-bar, foobar]
 SAME_PACKAGE_STORAGE=[storage-file-ro, collision-st-a, collision-st-b, foo-bar, foobar]
-COLLISION_QUERY=[collision-q-b, collision-q-a, query-file-rw, fixture-qall]
-COLLISION_MOVE=[collision-q-b, collision-q-a, query-file-rw, fixture-qall]
-COLLISION_INGEST=[query-file-rw, fixture-qall, fixture-lst-ing, collision-q-a, collision-q-b, collision-ing-a, collision-ing-b]
-COLLISION_RETRIEVE=[fixture-lst-ret, collision-ret-a, collision-ret-b]
+COLLISION_QUERY=[collision-q-a, query-file-rw, collision-q-b]
+COLLISION_MOVE=[collision-q-a, query-file-rw, collision-q-b]
+COLLISION_INGEST=[query-file-rw, collision-q-a, collision-q-b, collision-ing-a, collision-ing-b]
+COLLISION_RETRIEVE=[collision-ret-a, collision-ret-b]
 ```
 
 The app context started without `BeanDefinitionOverrideException`, and the full
@@ -1361,3 +1362,46 @@ A fast collision-only verification is:
 node scripts/build-fixtures.mjs --repo /path/to/dicoogle-next \
   --only collision --skip-standalone
 ```
+
+
+---
+
+## Addendum E — Stub safety and opt-in defaults (routing-findings follow-up)
+
+The routing investigation (`query-routing-findings.md`) showed that a
+previously default-enabled generated query-index provider joins every C-FIND/C-MOVE query
+when `app.dimse.dim-providers` is empty or QIDO-RS has no `provider` parameter.
+The generated stubs ignored request keys and returned recorded entries, so a
+client could receive unrelated results. Generated listeners also ran inside
+`listeners.forEach` loops with no exception isolation.
+
+Reversal and mitigations:
+
+- Query-index and listener now default to `enabled=false` /
+  `matchIfMissing=false`, matching storage. Generated READMEs state "set
+  `enabled: true` to activate".
+- Generated `query()` and `resolve()` return an empty list with a TODO that
+  names the request fields to match. They never return recorded ingest entries.
+- Ingest entries remain in an in-memory map for tests/future logic, exposed only
+  through package-private accessors. Maintenance uses a separate path set and
+  only updates its own counts; it never feeds query/move.
+- Ingest and retrieve callbacks catch/log `RuntimeException` and never rethrow.
+  `CStoreService.java:364`/`:382` has no per-listener isolation; a throwing
+  listener aborts later listeners and a success exception can turn a successful
+  store into a failure (`CStoreService.java:233-248`).
+- Generated READMEs document routing fan-out, dedup keys, missing router
+  timeouts, unstable provider order, settings first-provider selection, and
+  maintenance all-provider mutation.
+- `templates/lock.json` carries `reservedPluginIds`; generation rejects bundled
+  ids such as `lucene` with exit `2`, because duplicate provider ids silently
+  overwrite in `QueryRouter.java:202-210`.
+- The fixture harness now wires every selected generated module into the temp
+  app; opt-in defaults keep them inactive. The collision probe explicitly sets
+  `enabled=true` for all collision modules.
+
+Verification on the pinned commit: a generated `routing-probe` module with
+`--ingest --query --move` was wired next to Lucene. With no enable property, the
+plugin registry was `[lucene, storage-file-ro, storage-file-rw]`; non-matching
+query/move results were empty. With `app.query.routing-probe.enabled=true`, the
+registry added `routing-probe`, but non-matching query/move results remained
+empty and matching results were identical to Lucene-only results.

@@ -141,5 +141,12 @@ export default {
         "    .run(context -> assertTrue(context.getBeansOfType(QueryIndexPlugin.class).isEmpty()));",
       ],
     },
+    {
+      name: "registersNothingByDefault",
+      body: [
+        "contextRunner.run(",
+        "    context -> assertTrue(context.getBeansOfType(QueryIndexPlugin.class).isEmpty()));",
+      ],
+    },
   ],
 };

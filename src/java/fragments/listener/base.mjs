@@ -56,5 +56,12 @@ export default {
         "    .run(context -> assertTrue(context.getBeansOfType(DicooglePlugin.class).isEmpty()));",
       ],
     },
+    {
+      name: "registersNothingByDefault",
+      body: [
+        "contextRunner.run(",
+        "    context -> assertTrue(context.getBeansOfType(DicooglePlugin.class).isEmpty()));",
+      ],
+    },
   ],
 };

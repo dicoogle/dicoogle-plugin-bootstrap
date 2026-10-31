@@ -2,7 +2,6 @@ export default {
   id: "query-index.move",
   imports: [
     "java.io.IOException",
-    "java.util.ArrayList",
     "java.util.List",
     "org.dicoogle.sdk.query.QueryMoveService",
   ],
@@ -13,15 +12,10 @@ export default {
       signature:
         "public List<MoveCandidate> resolve(MoveRequest request) throws IOException",
       body: [
-        "// TODO: replace the in-memory scan with real move resolution.",
-        "List<MoveCandidate> results = new ArrayList<>();",
-        "for (IndexEntry entry : index.values()) {",
-        "  if (request.cancelRequested() != null && request.cancelRequested().getAsBoolean()) {",
-        "    break;",
-        "  }",
-        "  results.add(new MoveCandidate(entry.sopClassUid(), entry.sopInstanceUid(), entry.location()));",
-        "}",
-        "return results;",
+        "// TODO: match request.keys() and level against recorded ingest entries",
+        "// before returning MoveCandidate values.",
+        "// Returning an empty list is intentional until matching is implemented.",
+        "return List.of();",
       ],
     },
   ],
@@ -31,12 +25,12 @@ export default {
     "org.dicoogle.sdk.query.QueryMoveService",
     "org.dicoogle.sdk.query.QueryRetrieveLevel",
     "org.dicoogle.sdk.query.QueryService",
-    "static org.junit.jupiter.api.Assertions.assertFalse",
+    "static org.junit.jupiter.api.Assertions.assertEquals",
     "static org.junit.jupiter.api.Assertions.assertTrue",
   ],
   tests: [
     {
-      name: "moveResolvesSeededEntry",
+      name: "moveReturnsNoUnmatchedEntries",
       body: [
         "{{ClassName}} plugin = new {{ClassName}}(new {{ClassName}}Properties());",
         "plugin.seedIndex(",
@@ -55,7 +49,8 @@ export default {
         "        1,",
         "        new Attributes(),",
         "        () -> false);",
-        "assertFalse(plugin.resolve(request).isEmpty());",
+        "assertTrue(plugin.resolve(request).isEmpty());",
+        "assertEquals(1, plugin.indexSize());",
       ],
     },
     {

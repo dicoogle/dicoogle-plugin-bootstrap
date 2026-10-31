@@ -70,8 +70,8 @@ test("query-index identity and defaults are derived from the model", () => {
   assert.equal(model.configPrefix, "app.query.my-index");
   assert.equal(model.className, "MyIndexQueryIndexPlugin");
   assert.equal(model.indexId, "my-index");
-  assert.equal(model.enabledDefault, true);
-  assert.equal(model.matchIfMissing, true);
+  assert.equal(model.enabledDefault, false);
+  assert.equal(model.matchIfMissing, false);
   assert.equal(model.out, model.artifactId);
   assert.equal(model.licenseHeader, "");
 });

@@ -28,9 +28,26 @@ Add this to the host `application.yml` (the tool never edits it):
 app:
   {{configFamily}}:
     {{id}}:
-      enabled: true
+      # set enabled: true to activate
+      enabled: false
 ```
 
+{{#if ingest}}
+> **Callback safety:** `CStoreService` dispatches ingest events with
+> `listeners.forEach` at `CStoreService.java:364` and
+> `CStoreService.java:382`; the loop has no per-listener exception isolation.
+> A throwing listener aborts the remaining listeners, and a success callback
+> exception can turn a successful C-STORE into a failure
+> (`CStoreService.java:233-248`). This generated callback catches and logs
+> `RuntimeException` and never rethrows.
+{{/if}}{{#if retrieve}}
+> **Callback safety:** `DicomwebRetrieveService` dispatches retrieve events
+> with `retrieveEventListeners.forEach` at
+> `DicomwebRetrieveService.java:369` and `DicomwebRetrieveService.java:382`;
+> the loop has no per-listener exception isolation, so a throwing listener
+> aborts the remaining listeners. This generated callback catches and logs
+> `RuntimeException` and never rethrows.
+{{/if}}
 ## Build
 
 ### Standalone mode
@@ -74,7 +91,8 @@ cd backend
 
 ## TODO
 
-Replace the recorded-event stubs with the real listener logic.{{#if licenseSpdx}}
+Replace the recorded-event helpers with the real listener logic. The generated
+callbacks are intentionally exception-safe until then.{{#if licenseSpdx}}
 
 ## License
 

@@ -35,13 +35,13 @@ test("listener identities follow Addendum A", () => {
   assert.equal(retrieve.beanName, "myAuditRetrieveListener");
 });
 
-test("listener defaults are enabled with matchIfMissing", () => {
+test("listener defaults are disabled with matchIfMissing", () => {
   for (const [name, flags, values = {}] of LISTENER_CASES) {
     const model = listenerModel(flags, values);
 
     assert.equal(model.family, "listener", name);
-    assert.equal(model.enabledDefault, true, name);
-    assert.equal(model.matchIfMissing, true, name);
+    assert.equal(model.enabledDefault, false, name);
+    assert.equal(model.matchIfMissing, false, name);
     assert.equal(model.out, model.artifactId, name);
   }
 });

@@ -2,7 +2,6 @@ package org.dicoogle.query.myindex;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -75,14 +74,9 @@ public class MyIndexQueryIndexPlugin implements QueryMoveService {
 
   @Override
   public List<MoveCandidate> resolve(MoveRequest request) throws IOException {
-    // TODO: replace the in-memory scan with real move resolution.
-    List<MoveCandidate> results = new ArrayList<>();
-    for (IndexEntry entry : index.values()) {
-      if (request.cancelRequested() != null && request.cancelRequested().getAsBoolean()) {
-        break;
-      }
-      results.add(new MoveCandidate(entry.sopClassUid(), entry.sopInstanceUid(), entry.location()));
-    }
-    return results;
+    // TODO: match request.keys() and level against recorded ingest entries
+    // before returning MoveCandidate values.
+    // Returning an empty list is intentional until matching is implemented.
+    return List.of();
   }
 }

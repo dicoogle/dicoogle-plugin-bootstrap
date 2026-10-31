@@ -16,6 +16,12 @@
     "dcm4cheVersion": "5.34.0",
     "webApiVersion": "1.0"
   },
+  "reservedPluginIds": [
+    "lucene",
+    "query-file-rw",
+    "storage-file-ro",
+    "storage-file-rw"
+  ],
   "listenerIdentities": {
     "ingest": {
       "domain": "query",
@@ -50,7 +56,7 @@
     },
     "java/storage/README.md.tmpl": {
       "source": "internal:java/storage/README.md.tmpl",
-      "sha256": "2a3716ada295cc0e9802318228152eb6fdf9728c0abe5465fa74bbf1cf14de12",
+      "sha256": "738b9114a7549a610bec01d43ad74d940f8d9c7a0c3b93580ca5cf5cdb9a8746",
       "placeholders": [
         "artifactId",
         "commit",
@@ -117,7 +123,7 @@
     },
     "java/query-index/README.md.tmpl": {
       "source": "internal:java/query-index/README.md.tmpl",
-      "sha256": "0f7e89c05ba3118980370dff083078d51eb3db049beaa7099690c36f83f14813",
+      "sha256": "ea84cbe778f7a115bce0870cd2d62dfc825727415234da2d4629f00a09d954fa",
       "placeholders": [
         "artifactId",
         "commit",
@@ -183,7 +189,7 @@
     },
     "java/listener/README.md.tmpl": {
       "source": "internal:java/listener/README.md.tmpl",
-      "sha256": "e325bd64cfffd0c18ac9d81b6c348b9e8b840446e2bc77f83aac03c5454afcd0",
+      "sha256": "a469ecb47d8f3791b71370c819561213892dcb737811c2be1b16d7957e7ef520",
       "placeholders": [
         "artifactId",
         "commit",

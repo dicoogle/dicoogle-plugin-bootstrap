@@ -3,10 +3,10 @@
 Zero-dependency Node ESM CLI that generates plugin boilerplate for
 [dicoogle-next](https://github.com/dicoogle/dicoogle-next).
 
-> **Status:** milestone 7 (listener family). The `java` command generates
-> working, Google-Java-Format-clean storage, query-index, and listener Maven
-> modules with Spring context tests, safe writes, and dry-run support. DIMSE is
-> intentionally descoped. `web` and `init` are still stubs.
+> **Status:** milestone 7 plus the routing-findings stub-safety fix. The `java`
+> command generates Google-Java-Format-clean storage, query-index, and listener
+> Maven modules with Spring context tests, safe writes, and dry-run support.
+> DIMSE is intentionally descoped. `web` and `init` are still stubs.
 
 ## Requirements
 
@@ -46,7 +46,14 @@ and, where meaningful, includes a suggested valid form.
 - Listener identity follows D13: `--ingest` → `query` domain, `app.query.<id>`,
   type `query-index`, `IngestListener`; `--retrieve` → `service` domain,
   `app.service.<id>`, type `service`, `RetrieveListener`.
-- Storage defaults to `enabled=false` and `scheme=<id>`.
+- All generated Java families default to `enabled=false` and must opt in. Storage
+  also defaults to `scheme=<id>`.
+- Plugin ids equal to reserved bundled ids (`lucene`, `query-file-rw`,
+  `storage-file-ro`, `storage-file-rw`) are rejected with exit `2`.
+  `QueryRouter` keys providers by `metadata().id()`; a duplicate would silently
+  overwrite the bundled plugin. The list lives in
+  `templates/lock.json` under `reservedPluginIds` and is checked by
+  `npm run verify:templates`.
 - Name, description, and author are length-checked; plugin versions are
   semver-like; packages, schemes, SPDX license ids, API versions, policy targets,
   and web hooks are validated.
@@ -99,22 +106,38 @@ At least one capability is required; no flags exits `2`. `--settings` alone adds
 the `QueryIndexPlugin` marker, `--maintenance` already extends it, and
 `--locator` exits `2`. `indexId()` defaults to the plugin id. The config uses
 `@Bean(initMethod = "start", destroyMethod = "stop")` with
-`@ConditionalOnProperty(..., matchIfMissing = true)`.
+`@ConditionalOnProperty(..., matchIfMissing = false)`, so the module is opt-in.
 
 Generated bean method names are derived from the generated class name in
 lowerCamelCase, so different plugin ids cannot collide in the Spring context.
-Generated tests cover the in-memory working stubs, Spring context registration,
-and visibility as the list types consumed by the app (`QueryService`,
+Generated tests cover the safe stubs, Spring context registration, and
+visibility as the list types consumed by the app (`QueryService`,
 `QueryMoveService`, `StorageIngestEventListener`, `QueryIndexMaintenance`,
 `QueryIndexSettings`).
 
+Safety defaults:
+
+- `query()` and `resolve()` return empty lists with TODOs that name the request
+  fields to match. They never return recorded ingest entries unrelated to the
+  request.
+- `--ingest` still records entries in an in-memory map, exposed only through
+  package-private accessors.
+- `--maintenance` keeps its own path set and counter; it never feeds query/move.
+  `QueryIndexMaintenanceService` applies maintenance to all providers when no
+  plugin id is given (`QueryIndexMaintenanceService.java:45-67`).
+- Ingest callbacks catch/log `RuntimeException` and never rethrow, because
+  `CStoreService` loops without per-listener isolation
+  (`CStoreService.java:364`, `:382`, `:233-248`).
+- Generated READMEs document routing: empty `app.dimse.dim-providers` and QIDO
+  without `provider` mean all providers; unknown names are dropped; results are
+  merged/deduplicated; there is no router timeout; provider order is not stable.
+
 `--settings` prints a displacement warning in the README, `--help`, and CLI
 stderr: `IndexSettingsController` selects the first `QueryIndexSettings`
-provider. Currently Lucene wins because `LuceneQueryConfig` has `@Order(0)`
-(`LuceneQueryConfig.java:16`), but bean ordering is not a stable contract, so a
-default-enabled generated provider could take over if ordering changes. Set
-`enabled=false` on one of them to be safe. Generated tests also assert `start()`
-and `stop()` run exactly once.
+provider. Lucene currently wins because `LuceneQueryConfig` has `@Order(0)`
+(`LuceneQueryConfig.java:16`), but bean ordering is not a stable contract. If
+the generated provider is enabled, only the first provider is exposed and
+mutated. Generated tests also assert `start()` and `stop()` run exactly once.
 
 ## Listener generation
 
@@ -131,7 +154,14 @@ node bin/dicoogle-plugin-bootstrap.mjs java \
 Exactly one of `--ingest` or `--retrieve` is required. Ingest uses the `query`
 domain, `app.query.<id>`, type `query-index`, and the `IngestListener` suffix.
 Retrieve uses the `service` domain, `app.service.<id>`, type `service`, and the
-`RetrieveListener` suffix.
+`RetrieveListener` suffix. Listeners default to `enabled=false`.
+
+Listener callbacks catch/log `RuntimeException` and never rethrow. This matters
+because `CStoreService` uses `listeners.forEach` without per-listener isolation
+(`CStoreService.java:364`, `:382`); a throwing ingest listener aborts later
+listeners and can turn a successful store into a failure
+(`CStoreService.java:233-248`). DICOMweb retrieve dispatch uses the same loop
+shape (`DicomwebRetrieveService.java:369`, `:382`).
 
 Event scope is intentionally narrow:
 
@@ -153,8 +183,8 @@ requests. `--family dimse` exits `2`.
 ## Template lock
 
 `templates/lock.json` is the single pin file. It fixes the dicoogle-next commit
-and build versions, the D13 listener identity mapping, and per-template SHA-256
-and placeholder declarations.
+and build versions, the D13 listener identity mapping, reserved bundled plugin
+ids, and per-template SHA-256 and placeholder declarations.
 
 Pinned baseline:
 
@@ -163,8 +193,8 @@ Pinned baseline:
 - Java `21`, Maven `3.9.12`, Spring Boot `4.0.3`, dcm4che `5.34.0`
 - parent/SDK `0.0.1-SNAPSHOT`, web `apiVersion` `1.0`
 
-Verify the lock, template files, hashes, placeholders, and listener identity
-mapping:
+Verify the lock, template files, hashes, placeholders, reserved plugin ids, and
+listener identity mapping:
 
 ```bash
 npm run verify:templates
@@ -232,6 +262,6 @@ local iteration.
 
 The authoritative design is [`docs/design.md`](docs/design.md), including
 Addendum A for listener identity. Storage, query-index, and listener generation,
-the renderer, lock verification, dry-run/safe-write tooling, and the Java compile
-fixture are implemented; DIMSE, web generation, and the interactive wizard
-remain descoped/out of scope.
+the renderer, lock verification, reserved bundled-id checks, dry-run/safe-write
+tooling, and the Java compile fixture are implemented; DIMSE, web generation,
+and the interactive wizard remain descoped/out of scope.

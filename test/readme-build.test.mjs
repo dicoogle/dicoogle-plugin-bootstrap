@@ -28,6 +28,8 @@ test("generated READMEs document standalone and in-repo builds", () => {
     const readme = files.find((file) => file.path === "README.md");
 
     assert.ok(readme, name);
+    assert.match(readme.content, /# set enabled: true to activate/, name);
+    assert.match(readme.content, /enabled: false/, name);
     assert.match(readme.content, /### Standalone mode/, name);
     assert.match(readme.content, /mvnw -B -ntp -N install/, name);
     assert.match(

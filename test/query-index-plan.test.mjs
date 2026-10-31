@@ -106,6 +106,7 @@ test("query-index materialized plans are complete and token-free", () => {
     assert.match(testFile.content, /ApplicationContextRunner/);
     assert.match(testFile.content, /registersBeanWhenEnabled/);
     assert.match(testFile.content, /registersNothingWhenDisabled/);
+    assert.match(testFile.content, /registersNothingByDefault/);
 
     assert.ok(pom, name);
     assert.match(pom.content, /<artifactId>spring-boot-test<\/artifactId>/);
@@ -192,7 +193,7 @@ test("settings generation warns about IndexSettingsController displacement", () 
   assert.ok(settingsReadme);
   assert.match(settingsReadme.content, /IndexSettingsController/);
   assert.match(settingsReadme.content, /selects the \*\*first\*\*/);
-  assert.match(settingsReadme.content, /enabled=false/);
+  assert.match(settingsReadme.content, /Only that first provider is exposed/);
 
   const ingestFiles = materializePlan(
     buildQueryIndexPlan(queryIndexModel({ ingest: true }), loadLock()),
@@ -271,4 +272,49 @@ test("query-index materialize surfaces render errors with exit 5", (t) => {
     () => materializePlan(plan, { templatesDir }),
     (error) => error.exitCode === EXIT_CODES.TEMPLATE,
   );
+});
+
+
+test("query-index stubs are safe and documented", () => {
+  const model = queryIndexModel({
+    ingest: true,
+    query: true,
+    move: true,
+    maintenance: true,
+  });
+  const files = materializePlan(
+    buildQueryIndexPlan(model, loadLock()),
+  );
+  const mainClass = files.find((file) =>
+    file.path.endsWith(`/${model.className}.java`),
+  );
+  const testFile = files.find((file) =>
+    file.path.endsWith(`${model.className}Test.java`),
+  );
+  const readme = files.find((file) => file.path === "README.md");
+
+  assert.ok(mainClass);
+  assert.match(mainClass.content, /public List<QueryResult> query\(/);
+  assert.match(mainClass.content, /return List\.of\(\);/);
+  assert.match(mainClass.content, /recorded ingest entries/);
+  assert.match(mainClass.content, /recordIngestSuccess/);
+  assert.match(mainClass.content, /maintainedPaths/);
+  assert.doesNotMatch(
+    mainClass.content,
+    /for \(IndexEntry entry : index\.values\(\)\)/,
+  );
+
+  assert.ok(testFile);
+  assert.match(testFile.content, /queryReturnsNoUnmatchedEntries/);
+  assert.match(testFile.content, /moveReturnsNoUnmatchedEntries/);
+  assert.match(testFile.content, /callbacksDoNotRethrowInternalFailures/);
+  assert.match(testFile.content, /maintenanceUsesOnlyItsOwnPathState/);
+
+  assert.ok(readme);
+  assert.match(readme.content, /This module is disabled by default/);
+  assert.match(readme.content, /## How routing finds your plugin/);
+  assert.match(readme.content, /There is no router timeout/);
+  assert.match(readme.content, /Provider order is not stable/);
+  assert.match(readme.content, /Callback safety/);
+  assert.match(readme.content, /Maintenance isolation/);
 });

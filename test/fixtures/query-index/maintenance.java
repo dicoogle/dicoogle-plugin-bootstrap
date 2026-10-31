@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.URI;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.dicoogle.sdk.PluginMetadata;
 import org.dicoogle.sdk.query.QueryIndexMaintenance;
@@ -23,6 +24,8 @@ public class MyIndexQueryIndexPlugin implements QueryIndexMaintenance {
       String sopInstanceUid,
       String sopClassUid,
       URI location) {}
+
+  private final Set<String> maintainedPaths = ConcurrentHashMap.newKeySet();
 
   public MyIndexQueryIndexPlugin(MyIndexQueryIndexPluginProperties properties) {
     this.properties = Objects.requireNonNull(properties);
@@ -78,18 +81,16 @@ public class MyIndexQueryIndexPlugin implements QueryIndexMaintenance {
 
   @Override
   public int indexedDocuments() throws IOException {
-    return index.size();
+    return maintainedPaths.size();
   }
 
   @Override
   public int indexPath(URI uri) throws IOException {
-    String key = "path:" + uri;
-    index.put(key, new IndexEntry("UNKNOWN", "UNKNOWN", uri.toString(), "UNKNOWN", uri));
-    return 1;
+    return maintainedPaths.add(uri.toString()) ? 1 : 0;
   }
 
   @Override
   public int unindexPath(URI uri) throws IOException {
-    return index.remove("path:" + uri) == null ? 0 : 1;
+    return maintainedPaths.remove(uri.toString()) ? 1 : 0;
   }
 }

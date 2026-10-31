@@ -2,14 +2,11 @@ package org.dicoogle.query.myindex;
 
 import java.io.IOException;
 import java.net.URI;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import org.dcm4che3.data.Attributes;
-import org.dcm4che3.data.Tag;
-import org.dcm4che3.data.VR;
 import org.dicoogle.sdk.PluginMetadata;
 import org.dicoogle.sdk.query.QueryIndexMaintenance;
 import org.dicoogle.sdk.query.QueryIndexSettings;
@@ -18,6 +15,8 @@ import org.dicoogle.sdk.query.QueryService;
 import org.dicoogle.sdk.query.StorageIngestEventListener;
 import org.dicoogle.sdk.storage.StorageIngestFailureEvent;
 import org.dicoogle.sdk.storage.StorageIngestSuccessEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MyIndexQueryIndexPlugin
     implements StorageIngestEventListener,
@@ -39,6 +38,10 @@ public class MyIndexQueryIndexPlugin
       String sopInstanceUid,
       String sopClassUid,
       URI location) {}
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MyIndexQueryIndexPlugin.class);
+
+  private final Set<String> maintainedPaths = ConcurrentHashMap.newKeySet();
 
   public MyIndexQueryIndexPlugin(MyIndexQueryIndexPluginProperties properties) {
     this.properties = Objects.requireNonNull(properties);
@@ -89,6 +92,23 @@ public class MyIndexQueryIndexPlugin
 
   @Override
   public void onIngestSuccess(StorageIngestSuccessEvent event) {
+    try {
+      recordIngestSuccess(event);
+    } catch (RuntimeException ex) {
+      LOGGER.warn("Failed to record ingest success", ex);
+    }
+  }
+
+  @Override
+  public void onIngestFailure(StorageIngestFailureEvent event) {
+    try {
+      recordIngestFailure(event);
+    } catch (RuntimeException ex) {
+      LOGGER.warn("Failed to record ingest failure", ex);
+    }
+  }
+
+  void recordIngestSuccess(StorageIngestSuccessEvent event) {
     // TODO: replace the in-memory index with real indexing logic.
     seedIndex(
         event.studyInstanceUid(),
@@ -98,39 +118,24 @@ public class MyIndexQueryIndexPlugin
         event.location());
   }
 
-  @Override
-  public void onIngestFailure(StorageIngestFailureEvent event) {
+  void recordIngestFailure(StorageIngestFailureEvent event) {
     // TODO: handle ingest failures.
   }
 
   @Override
   public List<QueryResult> query(QueryRequest request) throws IOException {
-    // TODO: replace the in-memory scan with real query logic.
-    List<QueryResult> results = new ArrayList<>();
-    for (IndexEntry entry : index.values()) {
-      if (request.cancelRequested() != null && request.cancelRequested().getAsBoolean()) {
-        break;
-      }
-      Attributes attributes = new Attributes();
-      attributes.setString(Tag.StudyInstanceUID, VR.UI, entry.studyInstanceUid());
-      attributes.setString(Tag.SeriesInstanceUID, VR.UI, entry.seriesInstanceUid());
-      attributes.setString(Tag.SOPInstanceUID, VR.UI, entry.sopInstanceUid());
-      results.add(new QueryResult(attributes, entry.location()));
-    }
-    return results;
+    // TODO: match request.keys(), freeText, keywordFilters, and level against
+    // recorded ingest entries before returning QueryResult values.
+    // Returning an empty list is intentional until matching is implemented.
+    return List.of();
   }
 
   @Override
   public List<MoveCandidate> resolve(MoveRequest request) throws IOException {
-    // TODO: replace the in-memory scan with real move resolution.
-    List<MoveCandidate> results = new ArrayList<>();
-    for (IndexEntry entry : index.values()) {
-      if (request.cancelRequested() != null && request.cancelRequested().getAsBoolean()) {
-        break;
-      }
-      results.add(new MoveCandidate(entry.sopClassUid(), entry.sopInstanceUid(), entry.location()));
-    }
-    return results;
+    // TODO: match request.keys() and level against recorded ingest entries
+    // before returning MoveCandidate values.
+    // Returning an empty list is intentional until matching is implemented.
+    return List.of();
   }
 
   @Override
@@ -140,19 +145,17 @@ public class MyIndexQueryIndexPlugin
 
   @Override
   public int indexedDocuments() throws IOException {
-    return index.size();
+    return maintainedPaths.size();
   }
 
   @Override
   public int indexPath(URI uri) throws IOException {
-    String key = "path:" + uri;
-    index.put(key, new IndexEntry("UNKNOWN", "UNKNOWN", uri.toString(), "UNKNOWN", uri));
-    return 1;
+    return maintainedPaths.add(uri.toString()) ? 1 : 0;
   }
 
   @Override
   public int unindexPath(URI uri) throws IOException {
-    return index.remove("path:" + uri) == null ? 0 : 1;
+    return maintainedPaths.remove(uri.toString()) ? 1 : 0;
   }
 
   @Override

@@ -24,7 +24,8 @@ Add this to the host `application.yml` (the tool never edits it):
 app:
   storage:
     {{id}}:
-      enabled: true
+      # set enabled: true to activate
+      enabled: false
       root-dir: ./data/{{id}}
       scheme: {{scheme}}
 ```

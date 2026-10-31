@@ -4,11 +4,15 @@ import org.dicoogle.sdk.PluginMetadata;
 import org.dicoogle.sdk.query.StorageIngestEventListener;
 import org.dicoogle.sdk.storage.StorageIngestFailureEvent;
 import org.dicoogle.sdk.storage.StorageIngestSuccessEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class MyAuditIngestListener implements StorageIngestEventListener {
 
   private static final PluginMetadata METADATA =
       new PluginMetadata("my-audit", "My Audit", "0.1.0", "query-index");
+
+  private static final Logger LOGGER = LoggerFactory.getLogger(MyAuditIngestListener.class);
   private int ingestCount;
   private StorageIngestSuccessEvent lastEvent;
 
@@ -19,13 +23,29 @@ public class MyAuditIngestListener implements StorageIngestEventListener {
 
   @Override
   public void onIngestSuccess(StorageIngestSuccessEvent event) {
+    try {
+      recordIngestSuccess(event);
+    } catch (RuntimeException ex) {
+      LOGGER.warn("Failed to record ingest success", ex);
+    }
+  }
+
+  @Override
+  public void onIngestFailure(StorageIngestFailureEvent event) {
+    try {
+      recordIngestFailure(event);
+    } catch (RuntimeException ex) {
+      LOGGER.warn("Failed to record ingest failure", ex);
+    }
+  }
+
+  void recordIngestSuccess(StorageIngestSuccessEvent event) {
     // TODO: replace the recorded event with real listener logic.
     this.lastEvent = event;
     ingestCount++;
   }
 
-  @Override
-  public void onIngestFailure(StorageIngestFailureEvent event) {
+  void recordIngestFailure(StorageIngestFailureEvent event) {
     // TODO: handle ingest failures.
   }
 
