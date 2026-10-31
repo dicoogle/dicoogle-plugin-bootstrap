@@ -56,8 +56,6 @@ Multiple web hooks can be generated together.
 
 ## Walkthrough 1: Java storage plugin
 
-All commands below were run in a temp clone of dicoogle-next.
-
 ### 1. Install the parent POM and SDK
 
 ```bash
@@ -157,11 +155,8 @@ Start the app the same way you normally run dicoogle-next.
 
 ### 5. Confirm it loaded
 
-The authenticated system plugin endpoint is `/api/system/plugins` (the servlet
-context path is `/api`). Look for `my-store` in the returned list. In the
-temp-clone verification, a Spring `MockMvc` test asserted that
-`/system/plugins` contains the generated id; no live browser or curl call was
-used.
+Call the authenticated `GET /api/system/plugins` and look for your plugin id
+(`my-store`). The servlet context path is `/api`.
 
 ## Walkthrough 2: Web route plus sidebar item
 
@@ -181,11 +176,17 @@ cp -R /path/to/generated-web/reports \
   /path/to/dicoogle-next/webapp/src/plugins/reports
 ```
 
-Restart Vite (new plugin folders are discovered at startup), then:
+Restart the Vite dev server after copying a new plugin folder:
 
 ```bash
 cd /path/to/dicoogle-next/webapp
 npm ci
+npm run dev
+```
+
+For checks before committing:
+
+```bash
 npm run lint
 npm run type-check
 npm run build
@@ -193,9 +194,8 @@ npm run build
 
 The sidebar item appears in the top navigation because `MainLayout` renders
 plugin sidebar extensions. The route `/plugins/reports` is registered by
-`App.tsx`; with the current base path it is reached under `/experimental/plugins/reports`.
-This was verified from the host code and the Vite build, not by clicking in a
-browser.
+`App.tsx`; with the current base path it is reached under
+`/experimental/plugins/reports`.
 
 Edit `index.ts` for extension metadata, `ReportsPage.tsx` for the page, and
 `plugin.config.json` for plugin metadata.
@@ -206,11 +206,6 @@ Edit `index.ts` for extension metadata, `ReportsPage.tsx` for the page, and
 
 | Family | File | Purpose | Developer edit |
 |---|---|---|---|
-| all Java | `pom.xml` | Parent POM, SDK, Spring, test dependencies. | Usually no. |
-| all Java | `<Class>Config.java` | Conditionally creates the bean when `enabled=true`. | No, unless you add bean dependencies. |
-| all Java | `<Class>Properties.java` | Configuration properties. | Add settings. |
-| all Java | `<Class>Test.java` | Generated smoke and context tests. | Extend. |
-| all Java | `README.md` | YAML, build, wiring, TODOs. | Keep current. |
 | storage | `<Class>.java` | `ReadableStoragePlugin`, `WritableStoragePlugin`, `ListableStoragePlugin`, and/or `DicomInstanceLocator`. | Replace the temp-directory stub. |
 | query-index | `<Class>.java` | Optional ingest, query, move, maintenance, settings. | Implement matching and real index behavior. |
 | listener ingest | `<Class>.java` | `StorageIngestEventListener`. | Replace recorded-event helper with real logic. |
@@ -282,13 +277,13 @@ Common flags:
 | `--id <kebab>` | required | all generation |
 | `--name <text>` | title-cased id | all generation |
 | `--description <text>` | `TODO: describe <name>` | all generation |
-| `--author <text>` | `Unknown` | all generation (used by web config) |
+| `--author <text>` | `Unknown` | web only in practice (used in `plugin.config.json`; Java output ignores it) |
 | `--plugin-version <v>` | `0.1.0` | all generation |
 | `--out <path>` | family-specific | all generation |
 | `--force` | off | all generation |
 | `--dry-run` | off | all generation |
-| `--license <SPDX\|none>` | `none` | Java |
-| `--type <token>` | derived | all generation |
+| `--license <SPDX\|none>` | `none` | Java (ignored by web) |
+| `--type <token>` | derived | all generation; overrides the metadata/descriptor type token |
 | `--help`, `-h` | | global |
 
 Java-only flags:
@@ -300,7 +295,7 @@ Java-only flags:
 | `--ingest`, `--query`, `--move`, `--maintenance`, `--settings` | at least one required | query-index |
 | `--ingest`, `--retrieve` | exactly one required | listener |
 | `--package <pkg>` | `org.dicoogle.<domain>.<id>` | Java |
-| `--scheme <scheme>` | id | storage |
+| `--scheme <scheme>` | id | storage; ignored by other Java families |
 
 Web-only flags:
 
@@ -310,7 +305,8 @@ Web-only flags:
 | `--api-version <v>` | `1.0` | web; only `1` or `1.0` |
 
 Flags for another family are rejected with exit `2`, for example
-`--writable` on query-index or `--hooks` on Java.
+`--writable` on query-index or `--hooks` on Java. `--type <token>` overrides
+the metadata type for Java and the `type` field in the web descriptor.
 
 Exit codes:
 
@@ -319,10 +315,8 @@ Exit codes:
 | `0` | Success |
 | `2` | Usage or validation error |
 | `3` | Target is not empty and `--force` was not used |
-| `5` | Template rendering error |
-| `6` | I/O or internal error |
-| `7` | Node.js is older than 20 |
-| `130` | Interrupted |
+
+Any other non-zero code is an internal error.
 
 ## Maintaining
 
@@ -345,3 +339,10 @@ Run the tool tests with:
 ```bash
 npm test
 ```
+
+Known limits:
+
+- Web placement is verified by the Vite build only, not in a browser.
+- Java load is verified by a MockMvc test, not a live server.
+- There is no template drift check.
+- There is no duplicate-id scan beyond the reserved list.

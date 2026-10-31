@@ -1,6 +1,6 @@
 {
   "name": "dicoogle-plugin-bootstrap",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Zero-dependency CLI that generates dicoogle-next plugin boilerplate.",
   "type": "module",
   "bin": {
