@@ -99,6 +99,8 @@ the `QueryIndexPlugin` marker, `--maintenance` already extends it, and
 `@Bean(initMethod = "start", destroyMethod = "stop")` with
 `@ConditionalOnProperty(..., matchIfMissing = true)`.
 
+Generated bean method names are derived from the generated class name in
+lowerCamelCase, so different plugin ids cannot collide in the Spring context.
 Generated tests cover the in-memory working stubs, Spring context registration,
 and visibility as the list types consumed by the app (`QueryService`,
 `QueryMoveService`, `StorageIngestEventListener`, `QueryIndexMaintenance`,
@@ -136,6 +138,10 @@ Event scope is intentionally narrow:
 - Retrieve fires only from DICOMweb retrieval
   (`DicomwebRetrieveService.java:369`, `DicomwebRetrieveService.java:382`).
   DIMSE C-MOVE does not invoke it.
+
+Bean method names derive from the generated class name in lowerCamelCase, so two
+ingest or two retrieve modules with different ids can coexist in one Spring
+context.
 
 DIMSE generation is descoped: `DimseAccessPolicy` and
 `DimseAssociationEventListener` exist in dicoogle-next but are not generated
@@ -203,13 +209,21 @@ node --test test/listener-plan.test.mjs
 The CLI has no runtime dependencies. The parser, validation, naming, renderer,
 lock verification, filesystem safety, and tests use only Node built-ins.
 
-Build the full Java fixture matrix (temp clone, parent/SDK install, all storage
-and query-index cases, Spotless check, tests, no-rewrite hash check, full
-reactor, standalone builds):
+Build the full Java fixture matrix (temp clone, parent/SDK install, all storage,
+query-index, listener, and collision cases, Spotless check, tests, no-rewrite
+hash check, full reactor, standalone builds):
 
 ```bash
 node scripts/build-fixtures.mjs --repo /path/to/dicoogle-next --keep
+
+# Faster targeted collision check:
+node scripts/build-fixtures.mjs --repo /path/to/dicoogle-next \
+  --only collision --skip-standalone
 ```
+
+`--only <case[,case]>` runs selected cases; `--only collision` expands to the
+eight collision modules. `--skip-standalone` and `--skip-full-reactor` speed up
+local iteration.
 
 ## Design
 

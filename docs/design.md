@@ -608,6 +608,7 @@ The composer:
 - Fails if a selected interface has no corresponding method fragment.
 - Fails if two fragments define the same method signature.
 - Fails if the class does not implement `DicooglePlugin` (directly or indirectly) when metadata is required.
+- Derives the Spring bean method name from the generated class name in lowerCamelCase (`MyAuditIngestListener` -> `myAuditIngestListener`), so different plugin ids produce different bean names.
 
 Web hook fragments work the same way: each hook contributes its method, imports, and optional component file. The composer deduplicates `createElement`/`lazy`/type imports.
 
@@ -1285,3 +1286,69 @@ PROBE_RETRIEVE_LISTENERS=[fixture-lst-ret]
 `fixture-qall` is the all-flags query-index fixture, which also implements
 `StorageIngestEventListener`; the dedicated listener module is
 `fixture-lst-ing`. The retrieve listener appears only in the retrieve list.
+
+---
+
+## Addendum D — Bean-name audit and collision evidence (milestone 7 follow-up)
+
+### Bean method audit
+
+Spring's default bean name is the `@Bean` method name (none of the generated
+templates declare an explicit `name`). All generated families now derive the
+method name from the generated class name in lowerCamelCase.
+
+| Family | Config template | Old generic method | New method / Spring bean name | Example |
+|---|---|---|---|---|
+| storage | `templates/java/storage/config.java.tmpl` | `storagePlugin` | `<classLowerCamel>` | `MyDicomStoreStoragePlugin` -> `myDicomStoreStoragePlugin` |
+| query-index | `templates/java/query-index/config.java.tmpl` | `queryIndexPlugin` | `<classLowerCamel>` | `MyIndexQueryIndexPlugin` -> `myIndexQueryIndexPlugin` |
+| listener ingest | `templates/java/listener/config.java.tmpl` | `ingestListener` | `<classLowerCamel>` | `MyAuditIngestListener` -> `myAuditIngestListener` |
+| listener retrieve | `templates/java/listener/config.java.tmpl` | `retrieveListener` | `<classLowerCamel>` | `MyAuditRetrieveListener` -> `myAuditRetrieveListener` |
+
+The previous risk that two same-kind listener modules could not coexist is
+removed. Distinct plugin ids produce distinct class names and therefore distinct
+bean names.
+
+### Collision fixture case
+
+`scripts/build-fixtures.mjs` now includes a permanent collision case that
+generates and wires:
+
+- two storage modules with different schemes
+- two all-flags query-index modules
+- two ingest listeners
+- two retrieve listeners
+
+All eight modules are added to the temp app and built in the full reactor. A
+generated `BeanCollisionProbeTest` starts the app context with both storage
+modules enabled and asserts the consumed lists contain both modules. Lucene is
+disabled only for that probe context to avoid its JVM-level write-lock conflict
+between multiple cached test contexts.
+
+Observed collision probe output:
+
+```text
+COLLISION_STORAGE=[storage-file-ro, collision-st-a, collision-st-b]
+COLLISION_QUERY=[collision-q-b, query-file-rw, collision-q-a]
+COLLISION_MOVE=[collision-q-b, query-file-rw, collision-q-a]
+COLLISION_INGEST=[query-file-rw, collision-q-a, collision-q-b, collision-ing-a, collision-ing-b]
+COLLISION_RETRIEVE=[collision-ret-a, collision-ret-b]
+```
+
+The app context started without `BeanDefinitionOverrideException`, and the full
+reactor with all eight modules passed.
+
+### Faster fixture runs
+
+`scripts/build-fixtures.mjs` now supports:
+
+- `--only <case[,case]>` to run selected cases; `--only collision` expands to
+  the eight collision cases
+- `--skip-standalone` to skip standalone builds
+- `--skip-full-reactor` to skip the reactor build
+
+A fast collision-only verification is:
+
+```bash
+node scripts/build-fixtures.mjs --repo /path/to/dicoogle-next \
+  --only collision --skip-standalone
+```
