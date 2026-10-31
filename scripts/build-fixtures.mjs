@@ -428,6 +428,21 @@ function assertNoRewrite(before, after, label) {
   }
 }
 
+function artifactIdForCase(family, testCase) {
+  if (testCase.artifactId) {
+    return testCase.artifactId;
+  }
+
+  const prefix =
+    family === "storage"
+      ? "dicoogle-next-storage"
+      : family === "query-index"
+        ? "dicoogle-next-query"
+        : "dicoogle-next-listener";
+
+  return `${prefix}-${testCase.id}`;
+}
+
 function runCase(
   family,
   testCase,
@@ -435,16 +450,10 @@ function runCase(
     backendDir,
     mvnw,
     backendPom,
+    appPom,
   },
 ) {
-  const prefix =
-    family === "storage"
-      ? "dicoogle-next-storage"
-      : family === "query-index"
-        ? "dicoogle-next-query"
-        : "dicoogle-next-listener";
-  const artifactId =
-    testCase.artifactId ?? `${prefix}-${testCase.id}`;
+  const artifactId = artifactIdForCase(family, testCase);
   const outputDir = path.join(backendDir, "plugins", artifactId);
 
   console.log(`\n=== ${family} case: ${testCase.name} ===`);
@@ -466,6 +475,7 @@ function runCase(
   );
 
   addModule(backendPom, `plugins/${artifactId}`);
+  addAppDependency(appPom, artifactId);
 
   run(
     mvnw,
@@ -521,6 +531,12 @@ import org.springframework.test.context.ActiveProfiles;
       "app.storage.collision-st-b.enabled=true",
       "app.storage.foo-bar.enabled=true",
       "app.storage.foobar.enabled=true",
+      "app.query.collision-q-a.enabled=true",
+      "app.query.collision-q-b.enabled=true",
+      "app.query.collision-ing-a.enabled=true",
+      "app.query.collision-ing-b.enabled=true",
+      "app.service.collision-ret-a.enabled=true",
+      "app.service.collision-ret-b.enabled=true",
       "app.query.lucene.enabled=false"
     })
 @ActiveProfiles("test")
@@ -682,6 +698,7 @@ function main() {
         backendDir,
         mvnw,
         backendPom,
+        appPom,
       });
     }
 
@@ -690,6 +707,7 @@ function main() {
         backendDir,
         mvnw,
         backendPom,
+        appPom,
       });
     }
 
@@ -698,6 +716,7 @@ function main() {
         backendDir,
         mvnw,
         backendPom,
+        appPom,
       });
     }
 
@@ -706,24 +725,8 @@ function main() {
         backendDir,
         mvnw,
         backendPom,
+        appPom,
       });
-    }
-
-    if (selected("all")) {
-      addAppDependency(appPom, "dicoogle-next-storage-fixture-all");
-      addAppDependency(appPom, "dicoogle-next-query-fixture-qall");
-    }
-
-    if (selected("ingest")) {
-      addAppDependency(appPom, "dicoogle-next-query-fixture-lst-ing");
-    }
-
-    if (selected("retrieve")) {
-      addAppDependency(appPom, "dicoogle-next-service-fixture-lst-ret");
-    }
-
-    for (const testCase of COLLISION_CASES.filter((testCase) => selected(testCase.name))) {
-      addAppDependency(appPom, testCase.artifactId);
     }
 
     const allCollisionSelected = COLLISION_CASES.every((testCase) =>
