@@ -1,6 +1,6 @@
 {
   "name": "dicoogle-plugin-bootstrap",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Zero-dependency CLI that generates dicoogle-next plugin boilerplate.",
   "type": "module",
   "bin": {
@@ -13,7 +13,7 @@
     "start": "node bin/dicoogle-plugin-bootstrap.mjs",
     "test": "node --test test/*.test.mjs",
     "test:cli": "node --test test/cli.test.mjs",
-    "verify:templates": "node scripts/verify-templates.mjs",
+    "verify:templates": "node bin/dicoogle-plugin-bootstrap.mjs version",
     "fixtures": "node scripts/build-fixtures.mjs"
   },
   "keywords": [

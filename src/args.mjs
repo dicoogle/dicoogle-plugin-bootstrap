@@ -1,6 +1,6 @@
 import { UsageError } from "./errors.mjs";
 
-const GLOBAL_BOOLEAN = ["--help", "-h", "--no-color", "--verbose"];
+const GLOBAL_BOOLEAN = ["--help", "-h"];
 const GLOBAL_VALUE = [];
 
 const COMMON_BOOLEAN = ["--force", "--dry-run"];
@@ -11,7 +11,6 @@ const COMMON_VALUE = [
   "--author",
   "--plugin-version",
   "--out",
-  "--repo",
   "--license",
   "--type",
 ];
@@ -41,10 +40,6 @@ function makeSpec(extraBoolean = [], extraValue = []) {
 }
 
 const COMMAND_SPECS = Object.freeze({
-  init: makeSpec([...JAVA_BOOLEAN, ...WEB_BOOLEAN], [
-    ...JAVA_VALUE,
-    ...WEB_VALUE,
-  ]),
   java: makeSpec(JAVA_BOOLEAN, JAVA_VALUE),
   web: makeSpec(WEB_BOOLEAN, WEB_VALUE),
   list: makeSpec(),

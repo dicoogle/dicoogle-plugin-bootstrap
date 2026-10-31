@@ -138,10 +138,10 @@ test("a flag value cannot be another flag", async () => {
 });
 
 test("a boolean flag cannot take an inline value", async () => {
-  const result = await run(["list", "--verbose=1"]);
+  const result = await run(["list", "--help=1"]);
 
   assert.equal(result.code, EXIT_CODES.USAGE);
-  assert.match(result.stderr, /flag "--verbose" does not take a value/);
+  assert.match(result.stderr, /flag "--help" does not take a value/);
 });
 
 test("unexpected positional argument exits 2", async () => {
@@ -257,11 +257,19 @@ test("query-index without --settings does not print the settings warning", async
   assert.doesNotMatch(result.stderr, /IndexSettingsController/);
 });
 
-test("init is still a stub", async () => {
+test("init is no longer a command", async () => {
   const result = await run(["init"]);
 
-  assert.equal(result.code, EXIT_CODES.OK);
-  assert.match(result.stdout, /not implemented yet/);
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /unknown command "init"/);
+});
+
+test("removed flags are rejected", async () => {
+  for (const flag of ["--repo", "--verbose", "--no-color"]) {
+    const result = await run(["list", flag]);
+    assert.equal(result.code, EXIT_CODES.USAGE, flag);
+    assert.match(result.stderr, /unknown flag/, flag);
+  }
 });
 
 test("DIMSE family is descoped with exit 2", async () => {

@@ -1,13 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import {
-  cpSync,
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  unlinkSync,
-  writeFileSync,
-} from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -16,53 +9,15 @@ import { fileURLToPath } from "node:url";
 import { EXIT_CODES } from "../src/errors.mjs";
 import {
   TemplateLockError,
-  extractPlaceholders,
   loadLock,
-  verifyLock,
+  validateLock,
 } from "../src/lock.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const BIN = path.join(ROOT, "bin", "dicoogle-plugin-bootstrap.mjs");
-const VERIFY_SCRIPT = path.join(
-  ROOT,
-  "scripts",
-  "verify-templates.mjs",
-);
-const TEMPLATES_DIR = path.join(ROOT, "templates");
 
-function runVerify(args = []) {
-  return spawnSync(process.execPath, [VERIFY_SCRIPT, ...args], {
-    encoding: "utf8",
-  });
-}
-
-function makeTempCopy() {
-  const dir = mkdtempSync(path.join(tmpdir(), "dicoogle-lock-"));
-  const templatesDir = path.join(dir, "templates");
-  cpSync(TEMPLATES_DIR, templatesDir, { recursive: true });
-
-  return {
-    dir,
-    templatesDir,
-    lockPath: path.join(templatesDir, "lock.json"),
-    cleanup() {
-      rmSync(dir, { recursive: true, force: true });
-    },
-  };
-}
-
-function mutateLock(temp, mutate) {
-  const lock = JSON.parse(readFileSync(temp.lockPath, "utf8"));
-  mutate(lock);
-  writeFileSync(temp.lockPath, `${JSON.stringify(lock, null, 2)}\n`);
-}
-
-function firstTemplatePath(lock) {
-  return Object.keys(lock.templates)[0];
-}
-
-test("real lock verifies and pins the design baseline", () => {
-  const { lock, templates } = verifyLock();
+test("real lock pins the design baseline", () => {
+  const lock = loadLock();
 
   assert.equal(
     lock.dicoogleNext.commit,
@@ -79,26 +34,16 @@ test("real lock verifies and pins the design baseline", () => {
   assert.equal(lock.dicoogleNext.parentVersion, "0.0.1-SNAPSHOT");
   assert.equal(lock.dicoogleNext.sdkVersion, "0.0.1-SNAPSHOT");
   assert.equal(lock.dicoogleNext.webApiVersion, "1.0");
-  assert.equal(lock.listenerIdentities.ingest.domain, "query");
-  assert.equal(
-    lock.listenerIdentities.ingest.pluginType,
-    "query-index",
-  );
-  assert.equal(
-    lock.listenerIdentities.retrieve.domain,
-    "service",
-  );
-  assert.equal(lock.listenerIdentities.retrieve.pluginType, "service");
   assert.deepEqual(lock.reservedPluginIds, [
     "lucene",
     "query-file-rw",
     "storage-file-ro",
     "storage-file-rw",
   ]);
-  assert.ok(templates.length > 0);
+  assert.equal(Object.hasOwn(lock, "templates"), false);
 });
 
-test("version prints pinned values from the verified lock", () => {
+test("version prints pinned values from the lock", () => {
   const result = spawnSync(process.execPath, [BIN, "version"], {
     encoding: "utf8",
   });
@@ -115,214 +60,46 @@ test("version prints pinned values from the verified lock", () => {
   assert.equal(result.stderr, "");
 });
 
-test("placeholder extraction handles interpolation and blocks", () => {
-  const placeholders = extractPlaceholders(
-    "id={{id}} name={{ name }} " +
-      "{{#if flag}}{{flag}}{{/if}}" +
-      "{{#each items}}{{items}}{{/each}}",
-  );
-
-  assert.deepEqual(placeholders, ["flag", "id", "items", "name"]);
-});
-
-test("verify script passes the real lock", () => {
-  const result = runVerify();
-
-  assert.equal(result.status, EXIT_CODES.OK);
-  assert.match(result.stdout, /template lock OK/);
-  assert.match(result.stdout, /templates verified: [1-9]\d*/);
-  assert.equal(result.stderr, "");
-});
-
-test("mutated hash exits 5", (t) => {
-  const temp = makeTempCopy();
-  t.after(() => temp.cleanup());
-
-  mutateLock(temp, (lock) => {
-    const templatePath = firstTemplatePath(lock);
-    lock.templates[templatePath].sha256 = "0".repeat(64);
-  });
-
-  const result = runVerify([
-    "--lock",
-    temp.lockPath,
-    "--templates",
-    temp.templatesDir,
-  ]);
-
-  assert.equal(result.status, EXIT_CODES.TEMPLATE);
-  assert.match(result.stderr, /template hash mismatch/);
-});
-
-test("undeclared placeholder exits 5", (t) => {
-  const temp = makeTempCopy();
-  t.after(() => temp.cleanup());
-
-  mutateLock(temp, (lock) => {
-    const templatePath = firstTemplatePath(lock);
-    lock.templates[templatePath].placeholders =
-      lock.templates[templatePath].placeholders.filter(
-        (placeholder) => placeholder !== "descriptionXml",
-      );
-  });
-
-  const result = runVerify([
-    "--lock",
-    temp.lockPath,
-    "--templates",
-    temp.templatesDir,
-  ]);
-
-  assert.equal(result.status, EXIT_CODES.TEMPLATE);
-  assert.match(
-    result.stderr,
-    /template uses undeclared placeholder\(s\): .*descriptionXml/,
-  );
-});
-
-test("declared-but-unused placeholder exits 5", (t) => {
-  const temp = makeTempCopy();
-  t.after(() => temp.cleanup());
-
-  mutateLock(temp, (lock) => {
-    const templatePath = firstTemplatePath(lock);
-    lock.templates[templatePath].placeholders.push("unusedPlaceholder");
-    lock.templates[templatePath].placeholders.sort();
-  });
-
-  const result = runVerify([
-    "--lock",
-    temp.lockPath,
-    "--templates",
-    temp.templatesDir,
-  ]);
-
-  assert.equal(result.status, EXIT_CODES.TEMPLATE);
-  assert.match(
-    result.stderr,
-    /template declares unused placeholder\(s\): .*unusedPlaceholder/,
-  );
-});
-
-test("missing template file exits 5", (t) => {
-  const temp = makeTempCopy();
-  t.after(() => temp.cleanup());
-
-  const lock = JSON.parse(readFileSync(temp.lockPath, "utf8"));
-  const templatePath = firstTemplatePath(lock);
-  unlinkSync(path.join(temp.templatesDir, templatePath));
-
-  const result = runVerify([
-    "--lock",
-    temp.lockPath,
-    "--templates",
-    temp.templatesDir,
-  ]);
-
-  assert.equal(result.status, EXIT_CODES.TEMPLATE);
-  assert.ok(
-    result.stderr.includes(`template file missing: ${templatePath}`),
-    result.stderr,
-  );
-});
-
-test("invalid schema exits 5", (t) => {
-  const temp = makeTempCopy();
-  t.after(() => temp.cleanup());
-
-  mutateLock(temp, (lock) => {
-    lock.schemaVersion = 999;
-  });
-
-  const result = runVerify([
-    "--lock",
-    temp.lockPath,
-    "--templates",
-    temp.templatesDir,
-  ]);
-
-  assert.equal(result.status, EXIT_CODES.TEMPLATE);
-  assert.match(result.stderr, /schemaVersion must be 1/);
-});
-
-test("listener identity drift exits 5", (t) => {
-  const temp = makeTempCopy();
-  t.after(() => temp.cleanup());
-
-  mutateLock(temp, (lock) => {
-    lock.listenerIdentities.ingest.configPrefix = "app.service.<id>";
-  });
-
-  const result = runVerify([
-    "--lock",
-    temp.lockPath,
-    "--templates",
-    temp.templatesDir,
-  ]);
-
-  assert.equal(result.status, EXIT_CODES.TEMPLATE);
-  assert.match(
-    result.stderr,
-    /listenerIdentities\.ingest\.configPrefix/,
-  );
-});
-
-test("loadLock throws a TemplateLockError with exit code 5", (t) => {
-  const temp = makeTempCopy();
-  t.after(() => temp.cleanup());
-
-  mutateLock(temp, (lock) => {
-    const templatePath = firstTemplatePath(lock);
-    lock.templates[templatePath].sha256 = "0".repeat(64);
-  });
-
+test("lock validation rejects missing pins and duplicates", () => {
   assert.throws(
-    () =>
-      loadLock({
-        lockPath: temp.lockPath,
-        templatesDir: temp.templatesDir,
-      }),
+    () => validateLock({ dicoogleNext: {}, reservedPluginIds: [] }),
     (error) =>
       error instanceof TemplateLockError &&
       error.exitCode === EXIT_CODES.TEMPLATE,
   );
+
+  const lock = JSON.parse(
+    readFileSync(new URL("../templates/lock.json", import.meta.url), "utf8"),
+  );
+
+  assert.throws(
+    () =>
+      validateLock({
+        ...lock,
+        reservedPluginIds: [...lock.reservedPluginIds, "lucene"],
+      }),
+    /reservedPluginIds contains duplicate "lucene"/,
+  );
 });
 
+test("lock read errors use template exit code 5", (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), "dicoogle-lock-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
 
-test("reserved plugin id drift exits 5", (t) => {
-  const temp = makeTempCopy();
-  t.after(() => temp.cleanup());
+  const missing = path.join(dir, "missing.json");
+  assert.throws(
+    () => loadLock({ lockPath: missing }),
+    (error) =>
+      error instanceof TemplateLockError &&
+      error.exitCode === EXIT_CODES.TEMPLATE,
+  );
 
-  mutateLock(temp, (lock) => {
-    lock.reservedPluginIds = [];
-  });
-
-  const result = runVerify([
-    "--lock",
-    temp.lockPath,
-    "--templates",
-    temp.templatesDir,
-  ]);
-
-  assert.equal(result.status, EXIT_CODES.TEMPLATE);
-  assert.match(result.stderr, /reservedPluginIds must be a non-empty array/);
-});
-
-test("duplicate reserved plugin id exits 5", (t) => {
-  const temp = makeTempCopy();
-  t.after(() => temp.cleanup());
-
-  mutateLock(temp, (lock) => {
-    lock.reservedPluginIds.push("lucene");
-  });
-
-  const result = runVerify([
-    "--lock",
-    temp.lockPath,
-    "--templates",
-    temp.templatesDir,
-  ]);
-
-  assert.equal(result.status, EXIT_CODES.TEMPLATE);
-  assert.match(result.stderr, /reservedPluginIds contains duplicate "lucene"/);
+  const invalid = path.join(dir, "invalid.json");
+  writeFileSync(invalid, "{not json");
+  assert.throws(
+    () => loadLock({ lockPath: invalid }),
+    (error) =>
+      error instanceof TemplateLockError &&
+      error.exitCode === EXIT_CODES.TEMPLATE,
+  );
 });

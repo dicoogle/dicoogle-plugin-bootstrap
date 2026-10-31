@@ -38,7 +38,6 @@ export const TOOL_VERSION = packageJson.version;
 export const HELP_TEXT = `Usage: dicoogle-plugin-bootstrap <command> [flags]
 
 Commands:
-  init      Interactive wizard (not implemented)
   java      Generate a Java Maven module (storage, query-index, listener)
   web       Generate a web UI plugin folder
   list      Show families, web hooks, and template pin status
@@ -46,21 +45,23 @@ Commands:
 
 Global flags:
   -h, --help      Show this help
-      --no-color  Disable ANSI color
-      --verbose   Print extra diagnostics
 
 Common generation flags:
   --id <kebab>            Plugin id
   --name <name>           Display name
+  --description <text>    Description
+  --author <name>         Author (used by web config)
+  --plugin-version <v>    Plugin version
   --out <path>            Target directory
-  --repo <path>           dicoogle-next checkout for id scanning
   --force                 Allow a non-empty target
   --dry-run               Print the file tree without writing
-  --license <SPDX|none>   Optional one-line SPDX header
+  --license <SPDX|none>   Optional Java SPDX header line
   --type <token>          Override the single metadata type token
 
 Java flags:
   --family storage|query-index|listener
+  --package <pkg>     Java package override
+  --scheme <scheme>   Storage scheme
   storage:     --readable --writable --listable --locator
   query-index: --ingest --query --move --maintenance --settings
                query()/resolve() return empty until matching is implemented.
@@ -79,8 +80,8 @@ Web flags:
   --api-version <v>   Only "1" or "1.0"
 
 Exit codes:
-  0 success, 2 usage, 3 target not empty, 4 duplicate id,
-  5 template error, 6 internal, 7 unsupported runtime, 130 interrupted
+  0 success, 2 usage, 3 target not empty, 5 template error,
+  6 internal, 7 unsupported runtime, 130 interrupted
 `;
 
 export function assertSupportedNode(version = process.versions.node) {
@@ -295,13 +296,6 @@ export async function main(
 
         io.stdout.write(
           `created ${files.length} file(s) in ${result.root}\n`,
-        );
-        return EXIT_CODES.OK;
-      }
-      case "init": {
-        io.stdout.write(
-          "dicoogle-plugin-bootstrap: init generation is not implemented yet " +
-            "(use java or web flags).\n",
         );
         return EXIT_CODES.OK;
       }

@@ -97,7 +97,6 @@ export function buildStorageModel({ flags = {}, values }) {
     out: flags.out ?? identity.artifactId,
     force: flags.force === true,
     dryRun: flags.dryRun === true,
-    repo: flags.repo,
   };
 }
 
@@ -201,7 +200,6 @@ export function buildQueryIndexModel({ flags = {}, values }) {
     out: flags.out ?? identity.artifactId,
     force: flags.force === true,
     dryRun: flags.dryRun === true,
-    repo: flags.repo,
   };
 }
 
@@ -258,7 +256,6 @@ export function buildListenerModel({ flags = {}, values }) {
     out: flags.out ?? identity.artifactId,
     force: flags.force === true,
     dryRun: flags.dryRun === true,
-    repo: flags.repo,
   };
 }
 
@@ -292,7 +289,6 @@ export function buildWebModel({ flags = {}, values }) {
     out: flags.out ?? identity.id,
     force: flags.force === true,
     dryRun: flags.dryRun === true,
-    repo: flags.repo,
     webApiVersion: values.apiVersion,
   };
 }

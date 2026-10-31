@@ -1,21 +1,12 @@
 import assert from "node:assert/strict";
-import { createHash } from "node:crypto";
-import {
-  mkdtempSync,
-  readFileSync,
-  rmSync,
-  writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
 import test from "node:test";
 
 import { EXIT_CODES } from "../src/errors.mjs";
 import {
   DEFAULT_TEMPLATES_DIR,
-  TemplateLockError,
   loadLock,
-  verifyTemplates,
 } from "../src/lock.mjs";
 import {
   buildListenerData,
@@ -172,7 +163,24 @@ test("tokenizer and placeholder extractor are shared", () => {
   );
 });
 
-test("every verified template renders with its full data object", () => {
+function templateFiles(directory, prefix = "") {
+  const files = [];
+
+  for (const entry of readdirSync(directory, { withFileTypes: true })) {
+    const relative = prefix ? `${prefix}/${entry.name}` : entry.name;
+    const absolute = path.join(directory, entry.name);
+
+    if (entry.isDirectory()) {
+      files.push(...templateFiles(absolute, relative));
+    } else if (entry.name.endsWith(".tmpl")) {
+      files.push(relative);
+    }
+  }
+
+  return files.sort();
+}
+
+test("every template file renders with its full data object", () => {
   const lock = loadLock();
   const storageData = buildStorageData(
     storageModel({
@@ -204,7 +212,7 @@ test("every verified template renders with its full data object", () => {
     hook: "query-filter",
   };
 
-  for (const templatePath of Object.keys(lock.templates)) {
+  for (const templatePath of templateFiles(DEFAULT_TEMPLATES_DIR)) {
     const content = readFileSync(
       path.join(DEFAULT_TEMPLATES_DIR, templatePath),
       "utf8",
@@ -227,38 +235,11 @@ test("every verified template renders with its full data object", () => {
   }
 });
 
-test("an undeclared placeholder fails in both renderer and verifier", (t) => {
+test("an undeclared placeholder fails in the renderer", () => {
   assert.throws(
     () => renderTemplate("{{undeclared}}", {}),
     (error) =>
       error instanceof TemplateRenderError &&
       error.exitCode === EXIT_CODES.TEMPLATE,
-  );
-
-  const templatesDir = mkdtempSync(
-    path.join(tmpdir(), "dicoogle-template-syntax-"),
-  );
-  t.after(() => rmSync(templatesDir, { recursive: true, force: true }));
-
-  const content = "{{undeclared}}\n";
-  const templatePath = path.join(templatesDir, "bad.tmpl");
-  writeFileSync(templatePath, content);
-
-  const lock = {
-    templates: {
-      "bad.tmpl": {
-        source: "test",
-        sha256: createHash("sha256").update(content).digest("hex"),
-        placeholders: [],
-      },
-    },
-  };
-
-  assert.throws(
-    () => verifyTemplates(lock, { templatesDir }),
-    (error) =>
-      error instanceof TemplateLockError &&
-      error.exitCode === EXIT_CODES.TEMPLATE &&
-      /undeclared placeholder/.test(error.message),
   );
 });

@@ -2,7 +2,6 @@ export const EXIT_CODES = Object.freeze({
   OK: 0,
   USAGE: 2,
   TARGET_NOT_EMPTY: 3,
-  DUPLICATE_ID: 4,
   TEMPLATE: 5,
   INTERNAL: 6,
   UNSUPPORTED_RUNTIME: 7,
