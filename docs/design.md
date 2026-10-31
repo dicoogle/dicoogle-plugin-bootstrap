@@ -165,14 +165,11 @@ dicoogle-plugin-bootstrap version              # tool + template-lock versions
 | `--out <path>` | Java: `./dicoogle-next-<domain>-<id>`; web: `./<id>` | Target directory. The tool writes only below this path. |
 | `--force` | off | Allow a non-empty target. Existing generated files may be overwritten; unrelated files are never deleted. |
 | `--dry-run` | off | Run all validation, render/compose in memory, run the post-render validators, then print only the file tree. No writes. Render/compose errors use the same exit codes as a real run. Non-empty target without `--force` still exits `3`. |
-| `--repo <path>` | none | dicoogle-next checkout used only for plugin-id uniqueness scanning and template validation. Never modified. |
 | `--license <SPDX\|none>` | `none` | Optional Java header. `none` means no header, matching current dicoogle-next. A value emits exactly one line at the top of each generated Java file: `// SPDX-License-Identifier: <SPDX>`. No full license boilerplate is generated (D7). |
 | `--type <token>` | derived | Override `{{pluginType}}` without changing the rest of the template. |
-| `--no-color` | auto | Disable ANSI color; also honors `NO_COLOR`. |
-| `--verbose` | off | Print the resolved model and template hashes to stderr. |
 | `--help`, `-h` | | Usage. |
 
-`--id`, `--out`, and `--repo` are the only path-bearing flags. `--repo` is validated by checking for `backend/pom.xml`, `backend/dicoogle-next-sdk`, and `webapp/vite-plugins/plugin-loader.ts`; otherwise exit `2`.
+`--id` and `--out` are the only path-bearing flags.
 
 ### 2.4 Java flags
 
@@ -1432,3 +1429,24 @@ not the prose examples.
   into `webapp/src/plugins`, then `npm ci`, `npm run lint`, `npm run type-check`,
   and `npm run build` passed. The generated Vite virtual module imported each
   generated `index.ts` and registered the expected id.
+
+---
+
+## Addendum G — v1.0 wrap-up
+
+- `sidebar-menu` without `route` now emits a CLI warning and a generated
+  README warning; the menu path remains `/plugins/<id>`.
+- Web component class names no longer double a suffix when the id already ends
+  in it (`my-settings` -> `MySettings.tsx`, not `MySettingsSettings.tsx`).
+- Removed no-effect CLI flags `--repo`, `--no-color`, and `--verbose`, and
+  removed the `init` command. `--license` remains effective for Java;
+  `--api-version` remains effective for web.
+- `templates/lock.json` is now pin-only: `dicoogleNext` plus
+  `reservedPluginIds`. SHA-256 hashes, per-template placeholder declarations,
+  `listenerIdentities`, and template verification were removed.
+  `npm run verify:templates` now prints the pins via `version` and cannot fail
+  on template content. The renderer still rejects unknown placeholders with
+  exit `5`.
+- CI is limited to `npm test` and `npm run verify:templates` on push.
+- Java fixture snapshots are unchanged. The intentional generated-output
+  changes are the sidebar-menu README warning and the web suffix deduplication.
