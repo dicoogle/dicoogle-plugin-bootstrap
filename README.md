@@ -204,6 +204,7 @@ node --test test/query-index-model.test.mjs
 node --test test/query-index-plan.test.mjs
 node --test test/listener-model.test.mjs
 node --test test/listener-plan.test.mjs
+node --test test/readme-build.test.mjs
 ```
 
 The CLI has no runtime dependencies. The parser, validation, naming, renderer,
