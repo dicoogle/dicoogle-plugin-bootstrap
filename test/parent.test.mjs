@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import {
+  existsSync,
   mkdirSync,
   mkdtempSync,
+  readFileSync,
+  readdirSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -128,4 +131,37 @@ test("dry-run surfaces a conflicting parent POM before writing", async (t) => {
   assert.equal(result.code, EXIT_CODES.USAGE);
   assert.match(result.stderr, /conflicting parent POM/);
   assert.equal(result.stdout, "");
+});
+
+test("conflicting parent POM exits 2 and leaves the target untouched", async (t) => {
+  const root = tempDir(t);
+  const out = path.join(root, "backend", "plugins", "my-store");
+  const keep = path.join(out, "keep.txt");
+
+  mkdirSync(out, { recursive: true });
+  writeFileSync(keep, "keep\n");
+  writeParentPom(path.join(root, "backend"), {
+    groupId: "com.example",
+    artifactId: "wrong-parent",
+    version: "9.9.9",
+  });
+
+  const before = readdirSync(out).sort();
+  const result = await run([
+    "java",
+    "--id",
+    "my-store",
+    "--family",
+    "storage",
+    "--readable",
+    "--out",
+    out,
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.USAGE);
+  assert.match(result.stderr, /conflicting parent POM/);
+  assert.equal(result.stdout, "");
+  assert.deepEqual(readdirSync(out).sort(), before);
+  assert.equal(readFileSync(keep, "utf8"), "keep\n");
+  assert.equal(existsSync(path.join(out, "pom.xml")), false);
 });
