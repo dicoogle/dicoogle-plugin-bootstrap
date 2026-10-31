@@ -196,4 +196,12 @@ test("web identity derives plugin type and component files", () => {
   });
 
   assert.equal(override.pluginType, "custom");
+
+  const settings = deriveWebIdentity({
+    id: "my-settings",
+    hooks: ["settings"],
+    apiVersion: "1.0",
+  });
+  assert.equal(settings.components[0].className, "MySettings");
+  assert.equal(settings.components[0].file, "MySettings.tsx");
 });

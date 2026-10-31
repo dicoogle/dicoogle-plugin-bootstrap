@@ -9,6 +9,12 @@
 - Hooks: `{{hookList}}`
 - dicoogle-next: `{{commit}}`
 
+{{#if sidebarMenu}}{{#unless hasRoute}}
+> **Warning:** `sidebar-menu` points to `/plugins/{{id}}` and needs a matching
+> route. This plugin does not generate that route. Add the `route` hook or
+> provide the route elsewhere.
+{{/unless}}{{/if}}
+
 ## Files
 
 - `plugin.config.json` — plugin metadata and discovery config.

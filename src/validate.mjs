@@ -648,10 +648,24 @@ export function validateGenerationOptions(
     values.entry = "index.ts";
   }
 
+  const warnings = packageCollisionWarnings(id, knownIds);
+
+  if (
+    command === "web" &&
+    values.hooks.includes("sidebar-menu") &&
+    !values.hooks.includes("route")
+  ) {
+    warnings.push(
+      `web plugin id "${id}" includes sidebar-menu without route: ` +
+        `the menu points to /plugins/${id} and needs a matching route ` +
+        "extension. Add --hooks ...route or provide a route yourself.",
+    );
+  }
+
   return {
     command,
     flags,
     values,
-    warnings: packageCollisionWarnings(id, knownIds),
+    warnings,
   };
 }

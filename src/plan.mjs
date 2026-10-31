@@ -285,6 +285,8 @@ export function buildWebData(model, lock) {
     apiVersion: model.apiVersion,
     pluginType: model.pluginType,
     hookList: model.hookList,
+    sidebarMenu: model.hooks.includes("sidebar-menu"),
+    hasRoute: model.hooks.includes("route"),
     idJson: JSON.stringify(model.id),
     apiVersionJson: JSON.stringify(model.apiVersion),
     nameJson: JSON.stringify(model.name),

@@ -51,6 +51,10 @@ test("every web hook produces a valid plan", () => {
     assert.equal(parsed.apiVersion, "1.0", hook);
     assert.equal(parsed.enabled, true, hook);
     assert.equal(parsed.type, hook, hook);
+    assert.equal(parsed.name, "My Web", hook);
+    assert.equal(parsed.version, "0.1.0", hook);
+    assert.equal(parsed.description, "Demo web plugin", hook);
+    assert.equal(parsed.author, "Team", hook);
 
     assert.ok(readme, hook);
     assert.match(readme.content, /No `package.json` is generated/, hook);
@@ -127,4 +131,47 @@ test("web plan rejects a missing entry file", () => {
     () => materializePlan(plan),
     /web entry file is missing/,
   );
+});
+
+
+test("component suffixes are not doubled", () => {
+  const cases = [
+    ["query-filter", "my-filter", "MyFilter.tsx"],
+    ["result-renderer", "my-renderer", "MyRenderer.tsx"],
+    ["route", "my-page", "MyPage.tsx"],
+    ["settings", "my-settings", "MySettings.tsx"],
+  ];
+
+  for (const [hook, id, expected] of cases) {
+    const files = materializePlan(
+      buildWebPlan(webModel([hook], { id }), loadLock()),
+    );
+    const paths = files.map((file) => file.path);
+
+    assert.ok(paths.includes(expected), hook);
+    assert.ok(
+      !paths.some((file) => /(Settings|Page|Filter|Renderer)\1\.tsx/.test(file)),
+      hook,
+    );
+  }
+});
+
+test("sidebar-menu without route warns in the README", () => {
+  const lock = loadLock();
+  const menuFiles = materializePlan(
+    buildWebPlan(webModel(["sidebar-menu"]), lock),
+  );
+  const menuReadme = menuFiles.find((file) => file.path === "README.md");
+
+  assert.ok(menuReadme);
+  assert.match(menuReadme.content, /Warning/);
+  assert.match(menuReadme.content, /needs a matching/);
+
+  const routeFiles = materializePlan(
+    buildWebPlan(webModel(["route", "sidebar-menu"]), lock),
+  );
+  const routeReadme = routeFiles.find((file) => file.path === "README.md");
+
+  assert.ok(routeReadme);
+  assert.doesNotMatch(routeReadme.content, /needs a matching/);
 });

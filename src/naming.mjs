@@ -75,7 +75,8 @@ export function configPrefixFor(id, domain) {
 }
 
 export function classNameFor(id, suffix) {
-  return `${pascalCase(id)}${suffix}`;
+  const base = pascalCase(id);
+  return base.endsWith(suffix) ? base : `${base}${suffix}`;
 }
 
 export function listenerIdentity(listenerKind) {

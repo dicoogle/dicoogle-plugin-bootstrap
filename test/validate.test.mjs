@@ -505,3 +505,22 @@ test("reserved bundled plugin ids are rejected", () => {
     "my-plugin",
   );
 });
+
+
+test("web sidebar-menu without route warns", () => {
+  const result = validateGenerationOptions({
+    command: "web",
+    flags: { id: "shortcuts", hooks: "sidebar-menu" },
+  });
+
+  assert.equal(result.warnings.length, 1);
+  assert.match(result.warnings[0], /sidebar-menu without route/);
+  assert.match(result.warnings[0], /\/plugins\/shortcuts/);
+
+  const withRoute = validateGenerationOptions({
+    command: "web",
+    flags: { id: "shortcuts", hooks: "sidebar-menu,route" },
+  });
+
+  assert.deepEqual(withRoute.warnings, []);
+});
