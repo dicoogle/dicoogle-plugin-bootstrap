@@ -52,6 +52,9 @@ try {
       `Spring Boot ${pin.springBootVersion}; ` +
       `dcm4che ${pin.dcm4cheVersion}; web apiVersion ${pin.webApiVersion}`,
   );
+  console.log(
+    `  reserved plugin ids: ${lock.reservedPluginIds.join(", ")}`,
+  );
   console.log(`  templates verified: ${templates.length}`);
 
   for (const template of templates) {

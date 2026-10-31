@@ -211,6 +211,20 @@ export function validatePluginId(value, { flag = "--id" } = {}) {
   return raw;
 }
 
+export function validateReservedPluginId(id, reservedIds = []) {
+  const reserved = new Set(reservedIds);
+
+  if (reserved.has(id)) {
+    fail(
+      `invalid plugin id ${quote(id)}: it is a reserved bundled plugin id. ` +
+        "QueryRouter keys providers by metadata().id(), so a duplicate would " +
+        "silently overwrite the bundled plugin. Choose another --id.",
+    );
+  }
+
+  return id;
+}
+
 export function validateDisplayName(value, options = {}) {
   return validateText(value, {
     flag: "--name",

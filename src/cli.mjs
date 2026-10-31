@@ -22,7 +22,10 @@ import {
   buildStoragePlan,
   materializePlan,
 } from "./plan.mjs";
-import { validateGenerationOptions } from "./validate.mjs";
+import {
+  validateGenerationOptions,
+  validateReservedPluginId,
+} from "./validate.mjs";
 
 const PACKAGE_JSON_URL = new URL("../package.json", import.meta.url);
 
@@ -58,12 +61,15 @@ Java flags:
   --family storage|query-index|listener
   storage:     --readable --writable --listable --locator
   query-index: --ingest --query --move --maintenance --settings
+               query()/resolve() return empty until matching is implemented.
                warning: IndexSettingsController selects the FIRST QueryIndexSettings
                provider (IndexSettingsController.java:25-31). Currently Lucene wins
                because LuceneQueryConfig has @Order(0) (LuceneQueryConfig.java:16),
-               but ordering is not a stable contract; set enabled=false on one of
-               them to be safe.
+               but ordering is not a stable contract; keep at most one enabled.
   listener:    --ingest | --retrieve
+  all Java modules default to enabled=false; set enabled: true to activate.
+  reserved bundled ids (lucene, query-file-rw, storage-file-ro,
+  storage-file-rw) exit 2.
 
 Web flags:
   --hooks <a,b>       query-filter,result-options,result-batch,
@@ -170,8 +176,8 @@ export async function main(
           "(IndexSettingsController.java:25-31). Currently Lucene wins " +
           "because LuceneQueryConfig has @Order(0) " +
           "(LuceneQueryConfig.java:16), but bean ordering is not a stable " +
-          "contract, so a default-enabled generated provider could take over " +
-          "if ordering changes. Set enabled=false on one of them to be safe.\n",
+          "contract. If a generated provider is enabled, only the first " +
+          "provider is exposed and mutated; keep at most one enabled.\n",
       );
     }
 
@@ -185,6 +191,11 @@ export async function main(
         return EXIT_CODES.OK;
       }
       case "java": {
+        const lock = loadLock();
+        validateReservedPluginId(
+          validated.values.id,
+          lock.reservedPluginIds,
+        );
         const family = validated.values?.family;
 
         if (
@@ -200,7 +211,6 @@ export async function main(
           return EXIT_CODES.OK;
         }
 
-        const lock = loadLock();
         const model =
           family === "storage"
             ? buildStorageModel({

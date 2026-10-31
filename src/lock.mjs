@@ -130,6 +130,33 @@ function validateListenerIdentities(identities) {
   }
 }
 
+
+const RESERVED_PLUGIN_ID_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
+
+function validateReservedPluginIds(ids) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    fail("reservedPluginIds must be a non-empty array.");
+  }
+
+  const seen = new Set();
+
+  for (const id of ids) {
+    assertNonEmptyString(id, "reservedPluginIds entry");
+
+    if (!RESERVED_PLUGIN_ID_PATTERN.test(id)) {
+      fail(
+        `reservedPluginIds entry "${id}" must be lowercase kebab-case.`,
+      );
+    }
+
+    if (seen.has(id)) {
+      fail(`reservedPluginIds contains duplicate "${id}".`);
+    }
+
+    seen.add(id);
+  }
+}
+
 function validateTemplateEntries(templates) {
   assertObject(templates, "templates");
 
@@ -231,6 +258,7 @@ export function validateLockSchema(lock) {
     );
   }
 
+  validateReservedPluginIds(lock.reservedPluginIds);
   validateListenerIdentities(lock.listenerIdentities);
   validateTemplateEntries(lock.templates);
 

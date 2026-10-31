@@ -19,6 +19,7 @@ import {
   validatePackageName,
   validatePluginId,
   validatePluginVersion,
+  validateReservedPluginId,
   validateScheme,
   validateTypeToken,
 } from "../src/validate.mjs";
@@ -478,4 +479,29 @@ test("validateGenerationOptions is a no-op for non-generation commands", () => {
 
   assert.equal(result.values, null);
   assert.deepEqual(result.warnings, []);
+});
+
+
+test("reserved bundled plugin ids are rejected", () => {
+  for (const id of [
+    "lucene",
+    "query-file-rw",
+    "storage-file-ro",
+    "storage-file-rw",
+  ]) {
+    expectUsageError(
+      () => validateReservedPluginId(id, [
+        "lucene",
+        "query-file-rw",
+        "storage-file-ro",
+        "storage-file-rw",
+      ]),
+      /reserved bundled plugin id/,
+    );
+  }
+
+  assert.equal(
+    validateReservedPluginId("my-plugin", ["lucene"]),
+    "my-plugin",
+  );
 });

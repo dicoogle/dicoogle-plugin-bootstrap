@@ -1,6 +1,11 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -232,7 +237,7 @@ test("--settings prints the settings displacement warning", async () => {
 
   assert.equal(result.code, EXIT_CODES.OK);
   assert.match(result.stderr, /IndexSettingsController selects the FIRST/);
-  assert.match(result.stderr, /enabled=false/);
+  assert.match(result.stderr, /keep at most one enabled/);
   assert.match(result.stdout, /dicoogle-next-query-my-index\//);
 });
 
@@ -432,4 +437,33 @@ test("bin entrypoint preserves usage exit code 2", () => {
 
   assert.equal(result.status, EXIT_CODES.USAGE);
   assert.match(result.stderr, /unknown command "wat"/);
+});
+
+
+test("reserved bundled plugin ids exit 2 without writing", async (t) => {
+  const parent = mkdtempSync(path.join(tmpdir(), "dicoogle-reserved-"));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+
+  for (const id of [
+    "lucene",
+    "query-file-rw",
+    "storage-file-ro",
+    "storage-file-rw",
+  ]) {
+    const out = path.join(parent, id);
+    const result = await run([
+      "java",
+      "--id",
+      id,
+      "--family",
+      "storage",
+      "--out",
+      out,
+    ]);
+
+    assert.equal(result.code, EXIT_CODES.USAGE, id);
+    assert.equal(result.stdout, "", id);
+    assert.match(result.stderr, /reserved bundled plugin id/, id);
+    assert.equal(existsSync(out), false, id);
+  }
 });

@@ -89,6 +89,12 @@ test("real lock verifies and pins the design baseline", () => {
     "service",
   );
   assert.equal(lock.listenerIdentities.retrieve.pluginType, "service");
+  assert.deepEqual(lock.reservedPluginIds, [
+    "lucene",
+    "query-file-rw",
+    "storage-file-ro",
+    "storage-file-rw",
+  ]);
   assert.ok(templates.length > 0);
 });
 
@@ -280,4 +286,43 @@ test("loadLock throws a TemplateLockError with exit code 5", (t) => {
       error instanceof TemplateLockError &&
       error.exitCode === EXIT_CODES.TEMPLATE,
   );
+});
+
+
+test("reserved plugin id drift exits 5", (t) => {
+  const temp = makeTempCopy();
+  t.after(() => temp.cleanup());
+
+  mutateLock(temp, (lock) => {
+    lock.reservedPluginIds = [];
+  });
+
+  const result = runVerify([
+    "--lock",
+    temp.lockPath,
+    "--templates",
+    temp.templatesDir,
+  ]);
+
+  assert.equal(result.status, EXIT_CODES.TEMPLATE);
+  assert.match(result.stderr, /reservedPluginIds must be a non-empty array/);
+});
+
+test("duplicate reserved plugin id exits 5", (t) => {
+  const temp = makeTempCopy();
+  t.after(() => temp.cleanup());
+
+  mutateLock(temp, (lock) => {
+    lock.reservedPluginIds.push("lucene");
+  });
+
+  const result = runVerify([
+    "--lock",
+    temp.lockPath,
+    "--templates",
+    temp.templatesDir,
+  ]);
+
+  assert.equal(result.status, EXIT_CODES.TEMPLATE);
+  assert.match(result.stderr, /reservedPluginIds contains duplicate "lucene"/);
 });
