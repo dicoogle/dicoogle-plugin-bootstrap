@@ -524,3 +524,25 @@ test("web sidebar-menu without route warns", () => {
 
   assert.deepEqual(withRoute.warnings, []);
 });
+
+
+test("family-specific flags are rejected outside their family", () => {
+  const cases = [
+    ["query-index", "writable", /--writable does not apply to --family "query-index"/],
+    ["storage", "ingest", /--ingest does not apply to --family "storage"/],
+    ["storage", "retrieve", /--retrieve does not apply to --family "storage"/],
+    ["listener", "query", /--query does not apply to --family "listener"/],
+    ["listener", "locator", /--locator does not apply to --family "listener"/],
+  ];
+
+  for (const [family, flag, pattern] of cases) {
+    expectUsageError(
+      () =>
+        validateGenerationOptions({
+          command: "java",
+          flags: { id: "my-plugin", family, [flag]: true },
+        }),
+      pattern,
+    );
+  }
+});

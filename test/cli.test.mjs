@@ -528,3 +528,30 @@ test("web dry-run prints the tree and writes nothing", async (t) => {
   assert.match(result.stdout, /MyWebFilter\.tsx/);
   assert.equal(existsSync(out), false);
 });
+
+
+test("flags from the wrong command family exit 2", async () => {
+  const javaHooks = await run([
+    "java",
+    "--id",
+    "my-plugin",
+    "--family",
+    "storage",
+    "--hooks",
+    "route",
+  ]);
+  assert.equal(javaHooks.code, EXIT_CODES.USAGE);
+  assert.match(javaHooks.stderr, /unknown flag "--hooks"/);
+
+  const webFamily = await run([
+    "web",
+    "--id",
+    "my-plugin",
+    "--hooks",
+    "route",
+    "--family",
+    "storage",
+  ]);
+  assert.equal(webFamily.code, EXIT_CODES.USAGE);
+  assert.match(webFamily.stderr, /unknown flag "--family"/);
+});

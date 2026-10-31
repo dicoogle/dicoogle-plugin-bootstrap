@@ -595,6 +595,44 @@ export function validateGenerationOptions(
       values.scheme = id;
     }
 
+    const familyFlags = {
+      storage: new Set([
+        "readable",
+        "writable",
+        "listable",
+        "locator",
+      ]),
+      "query-index": new Set([
+        "ingest",
+        "query",
+        "move",
+        "maintenance",
+        "settings",
+        "locator",
+      ]),
+      listener: new Set(["ingest", "retrieve"]),
+    };
+    const allowedFlags = familyFlags[values.family];
+
+    for (const flag of [
+      "readable",
+      "writable",
+      "listable",
+      "locator",
+      "ingest",
+      "query",
+      "move",
+      "maintenance",
+      "settings",
+      "retrieve",
+    ]) {
+      if (flags[flag] === true && !allowedFlags.has(flag)) {
+        fail(
+          `--${flag} does not apply to --family "${values.family}".`,
+        );
+      }
+    }
+
     if (values.family === "listener") {
       const ingest = flags.ingest === true;
       const retrieve = flags.retrieve === true;
