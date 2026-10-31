@@ -2,6 +2,7 @@ import {
   buildListenerModel,
   buildQueryIndexModel,
   buildStorageModel,
+  buildWebModel,
 } from "../src/model.mjs";
 
 export function storageValues(overrides = {}) {
@@ -129,3 +130,36 @@ export const LISTENER_CASES = [
     { id: "fixture-listener-retrieve-long-identifier" },
   ],
 ];
+
+
+export const WEB_HOOK_CASES = [
+  ["query-filter", "Filter"],
+  ["result-options", null],
+  ["result-batch", null],
+  ["result-renderer", "Renderer"],
+  ["sidebar-menu", null],
+  ["route", "Page"],
+  ["settings", "Settings"],
+];
+
+export function webModel(hooks = ["query-filter"], overrides = {}) {
+  const hookList = Array.isArray(hooks) ? hooks : [hooks];
+
+  return buildWebModel({
+    flags: {},
+    values: {
+      id: "my-web",
+      name: "My Web",
+      description: "Demo web plugin",
+      author: "Team",
+      pluginVersion: "0.1.0",
+      license: null,
+      type: undefined,
+      hooks: hookList,
+      apiVersion: "1.0",
+      pluginType: hookList.length === 1 ? hookList[0] : "multi",
+      entry: "index.ts",
+      ...overrides,
+    },
+  });
+}

@@ -21,6 +21,7 @@ import {
   buildListenerData,
   buildQueryIndexData,
   buildStorageData,
+  buildWebData,
 } from "../src/plan.mjs";
 import {
   TemplateRenderError,
@@ -33,6 +34,7 @@ import {
 import {
   listenerModel,
   queryIndexModel,
+  webModel,
   storageModel,
 } from "./helpers.mjs";
 
@@ -195,6 +197,12 @@ test("every verified template renders with its full data object", () => {
     listenerModel({ ingest: true }),
     lock,
   );
+  const webData = buildWebData(webModel(["query-filter"]), lock);
+  const webComponentData = {
+    ...webData,
+    ClassName: "MyWebFilter",
+    hook: "query-filter",
+  };
 
   for (const templatePath of Object.keys(lock.templates)) {
     const content = readFileSync(
@@ -205,7 +213,11 @@ test("every verified template renders with its full data object", () => {
       ? queryData
       : templatePath.startsWith("java/listener/")
         ? listenerData
-        : storageData;
+        : templatePath.startsWith("web/")
+          ? templatePath.endsWith(".tsx.tmpl")
+            ? webComponentData
+            : webData
+          : storageData;
     const rendered = renderTemplate(content, data, {
       name: templatePath,
     });

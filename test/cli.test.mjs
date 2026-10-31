@@ -3,6 +3,7 @@ import { spawnSync } from "node:child_process";
 import {
   existsSync,
   mkdtempSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -256,17 +257,11 @@ test("query-index without --settings does not print the settings warning", async
   assert.doesNotMatch(result.stderr, /IndexSettingsController/);
 });
 
-test("web and init are still stubs", async () => {
-  const cases = [
-    ["web", "--id", "my-plugin", "--hooks", "route"],
-    ["init"],
-  ];
+test("init is still a stub", async () => {
+  const result = await run(["init"]);
 
-  for (const argv of cases) {
-    const result = await run(argv);
-    assert.equal(result.code, EXIT_CODES.OK);
-    assert.match(result.stdout, /not implemented yet/);
-  }
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.match(result.stdout, /not implemented yet/);
 });
 
 test("DIMSE family is descoped with exit 2", async () => {
@@ -466,4 +461,62 @@ test("reserved bundled plugin ids exit 2 without writing", async (t) => {
     assert.match(result.stderr, /reserved bundled plugin id/, id);
     assert.equal(existsSync(out), false, id);
   }
+});
+
+
+test("web generation writes plugin files and no package.json", async (t) => {
+  const dir = mkdtempSync(path.join(tmpdir(), "dicoogle-web-cli-"));
+  t.after(() => rmSync(dir, { recursive: true, force: true }));
+
+  const result = await run([
+    "web",
+    "--id",
+    "my-plugin",
+    "--hooks",
+    "route,sidebar-menu,settings",
+    "--out",
+    dir,
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.match(result.stdout, /created 5 file\(s\)/);
+  assert.equal(existsSync(path.join(dir, "package.json")), false);
+
+  const config = JSON.parse(
+    readFileSync(path.join(dir, "plugin.config.json"), "utf8"),
+  );
+  assert.equal(config.id, "my-plugin");
+  assert.equal(config.entry, "index.ts");
+  assert.equal(config.apiVersion, "1.0");
+  assert.equal(config.type, "multi");
+
+  const index = readFileSync(path.join(dir, "index.ts"), "utf8");
+  assert.match(index, /getRouteExtensions/);
+  assert.match(index, /getSidebarMenuExtensions/);
+  assert.match(index, /getSettingsExtensions/);
+  assert.doesNotMatch(index, /metadata:/);
+  assert.ok(existsSync(path.join(dir, "MyPluginPage.tsx")));
+  assert.ok(existsSync(path.join(dir, "MyPluginSettings.tsx")));
+});
+
+test("web dry-run prints the tree and writes nothing", async (t) => {
+  const parent = mkdtempSync(path.join(tmpdir(), "dicoogle-web-dry-"));
+  t.after(() => rmSync(parent, { recursive: true, force: true }));
+  const out = path.join(parent, "my-web");
+
+  const result = await run([
+    "web",
+    "--id",
+    "my-web",
+    "--hooks",
+    "query-filter",
+    "--out",
+    out,
+    "--dry-run",
+  ]);
+
+  assert.equal(result.code, EXIT_CODES.OK);
+  assert.match(result.stdout, /plugin\.config\.json/);
+  assert.match(result.stdout, /MyWebFilter\.tsx/);
+  assert.equal(existsSync(out), false);
 });
