@@ -1405,3 +1405,30 @@ plugin registry was `[lucene, storage-file-ro, storage-file-rw]`; non-matching
 query/move results were empty. With `app.query.routing-probe.enabled=true`, the
 registry added `routing-probe`, but non-matching query/move results remained
 empty and matching results were identical to Lucene-only results.
+
+---
+
+## Addendum F — Web templates and multi-hook (milestone 9)
+
+Web generation is implemented from the contracts in
+`webapp/src/plugin-system/types.ts` and `webapp/vite-plugins/plugin-loader.ts`,
+not the prose examples.
+
+- Entry file is always `index.ts` and is JSX-free. Components are `.tsx`.
+- `plugin.config.json` uses `apiVersion` `"1.0"`, `entry` `"index.ts"`,
+  `enabled: true`, and one `type` (`<hook>` or `multi`). No `package.json` is
+  emitted.
+- Hook fragments live in `src/web/fragments/index.mjs`; `src/web/compose.mjs`
+  composes the entry, deduplicating type/React/icon imports and adding lazy
+  component declarations only when needed.
+- Components exist only for `query-filter`, `result-renderer`, `route`, and
+  `settings`. `result-options`, `result-batch`, and `sidebar-menu` are
+  entry-only and use `createElement` icons.
+- Components use the exact `QueryFilterProps` and `ResultRendererProps` types.
+  Route and settings components take no props.
+- Web templates are pinned in `templates/lock.json` (18 templates total after
+  milestone 9). The verifier checks hashes and placeholders.
+- Reproduction in a temp clone: each hook and the multi-hook case were copied
+  into `webapp/src/plugins`, then `npm ci`, `npm run lint`, `npm run type-check`,
+  and `npm run build` passed. The generated Vite virtual module imported each
+  generated `index.ts` and registered the expected id.

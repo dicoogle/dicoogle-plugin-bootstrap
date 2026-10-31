@@ -3,10 +3,11 @@
 Zero-dependency Node ESM CLI that generates plugin boilerplate for
 [dicoogle-next](https://github.com/dicoogle/dicoogle-next).
 
-> **Status:** milestone 7 plus the routing-findings stub-safety fix. The `java`
-> command generates Google-Java-Format-clean storage, query-index, and listener
-> Maven modules with Spring context tests, safe writes, and dry-run support.
-> DIMSE is intentionally descoped. `web` and `init` are still stubs.
+> **Status:** milestone 9 (web templates and multi-hook). The `java` command
+> generates Google-Java-Format-clean storage, query-index, and listener Maven
+> modules with Spring context tests. The `web` command generates plugin folders
+> for all seven UI hooks and multi-hook plugins. DIMSE is intentionally
+> descoped. `init` is still a stub.
 
 ## Requirements
 
@@ -30,7 +31,7 @@ After `npm link`, the same commands are available as
 |---|---|
 | `init` | Interactive wizard (not implemented) |
 | `java` | Generate a Java module; storage, query-index, and listener are implemented |
-| `web` | Validate input and derive web naming (generation not implemented yet) |
+| `web` | Generate a web UI plugin folder for one or more hooks |
 | `list` | Show supported families, web hooks, and the verified template pin |
 | `version` | Show tool, Node, and verified template-lock versions |
 
@@ -180,6 +181,32 @@ DIMSE generation is descoped: `DimseAccessPolicy` and
 because they are absent from classic Dicoogle and access policies can deny
 requests. `--family dimse` exits `2`.
 
+## Web generation
+
+```bash
+node bin/dicoogle-plugin-bootstrap.mjs web \
+  --id study-tools --hooks route,sidebar-menu,settings \
+  --name "Study Tools" \
+  --out /tmp/study-tools
+```
+
+Web hooks: `query-filter`, `result-options`, `result-batch`,
+`result-renderer`, `sidebar-menu`, `route`, `settings`. Any subset is valid.
+The generated folder contains `plugin.config.json`, `index.ts`, `README.md`,
+and `.tsx` components only for the hooks that need them. No `package.json` is
+emitted; the host webapp provides React, TypeScript, Vite, and
+`@/plugin-system`.
+
+`index.ts` is always JSX-free: icons use `createElement` and components use
+`lazy`. `plugin.config.json` uses `apiVersion` `1.0`, `entry` `index.ts`, and a
+single `type` (`<hook>` for one hook, `multi` for several). Components use the
+exact `QueryFilterProps`/`ResultRendererProps` contracts from
+`webapp/src/plugin-system/types.ts`.
+
+Generated web READMEs explain copying the folder into
+`webapp/src/plugins/<id>`, restarting Vite, and running `npm run lint`,
+`npm run type-check`, and `npm run build`.
+
 ## Template lock
 
 `templates/lock.json` is the single pin file. It fixes the dicoogle-next commit
@@ -201,9 +228,10 @@ npm run verify:templates
 node scripts/verify-templates.mjs --lock templates/lock.json --templates templates
 ```
 
-Template bodies currently cover storage, query-index, and listener POM, README,
-config, and properties files. Plugin classes and tests are composed from pinned
-fragments. DIMSE is descoped.
+Template bodies cover storage, query-index, and listener POM, README, config,
+and properties files plus web config, README, and component templates. Plugin
+classes, tests, and web entries are composed from pinned fragments. DIMSE is
+descoped.
 
 ## Exit codes
 
@@ -237,6 +265,8 @@ node --test test/query-index-plan.test.mjs
 node --test test/listener-model.test.mjs
 node --test test/listener-plan.test.mjs
 node --test test/readme-build.test.mjs
+node --test test/web-model.test.mjs
+node --test test/web-plan.test.mjs
 ```
 
 The CLI has no runtime dependencies. The parser, validation, naming, renderer,
@@ -263,5 +293,5 @@ local iteration.
 The authoritative design is [`docs/design.md`](docs/design.md), including
 Addendum A for listener identity. Storage, query-index, and listener generation,
 the renderer, lock verification, reserved bundled-id checks, dry-run/safe-write
-tooling, and the Java compile fixture are implemented; DIMSE, web generation,
-and the interactive wizard remain descoped/out of scope.
+tooling, the Java compile fixture, and web templates are implemented; DIMSE and
+the interactive wizard remain descoped/out of scope.
