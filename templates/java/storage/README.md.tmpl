@@ -31,13 +31,35 @@ app:
 
 ## Build
 
+### Standalone mode
+
+When `../../pom.xml` is absent, Maven resolves the parent from the local
+repository. Install the pinned parent and SDK once from a dicoogle-next
+checkout:
+
+```bash
+cd backend
+./mvnw -B -ntp -N install
+./mvnw -B -ntp -pl dicoogle-next-sdk -am install
+```
+
+Then build this module:
+
 ```bash
 mvn -B -ntp spotless:check test
 ```
 
+### In-repo mode
+
 To build in place under `backend/plugins/{{artifactId}}`, add the module to
 `backend/pom.xml` and add the dependency to `backend/dicoogle-next/pom.xml`.
-The tool never edits those files.
+The parent is then resolved from `../../pom.xml`. The tool never edits those
+files.
+
+```bash
+cd backend
+./mvnw -B -ntp -pl plugins/{{artifactId}} -am spotless:check test
+```
 
 ## Pinned baseline
 

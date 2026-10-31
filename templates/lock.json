@@ -50,7 +50,7 @@
     },
     "java/storage/README.md.tmpl": {
       "source": "internal:java/storage/README.md.tmpl",
-      "sha256": "edcee2aee5f8c2f51e89b987a24fa04b6fbeefd2593d62c47ed49dd5b37796ff",
+      "sha256": "2a3716ada295cc0e9802318228152eb6fdf9728c0abe5465fa74bbf1cf14de12",
       "placeholders": [
         "artifactId",
         "commit",
@@ -117,7 +117,7 @@
     },
     "java/query-index/README.md.tmpl": {
       "source": "internal:java/query-index/README.md.tmpl",
-      "sha256": "ef901d42feb7389a9c21b68fe28aeba63004b972e4f0722aef15e975ee74b91c",
+      "sha256": "0f7e89c05ba3118980370dff083078d51eb3db049beaa7099690c36f83f14813",
       "placeholders": [
         "artifactId",
         "commit",
@@ -183,7 +183,7 @@
     },
     "java/listener/README.md.tmpl": {
       "source": "internal:java/listener/README.md.tmpl",
-      "sha256": "97b96c401f6fde2f04e1d818c97455acc909db182c3e1ce9a08a3d0e75b1acf9",
+      "sha256": "e325bd64cfffd0c18ac9d81b6c348b9e8b840446e2bc77f83aac03c5454afcd0",
       "placeholders": [
         "artifactId",
         "commit",
