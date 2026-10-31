@@ -14,12 +14,14 @@ import {
   buildListenerModel,
   buildQueryIndexModel,
   buildStorageModel,
+  buildWebModel,
 } from "./model.mjs";
 import { inspectParentPom } from "./parent.mjs";
 import {
   buildListenerPlan,
   buildQueryIndexPlan,
   buildStoragePlan,
+  buildWebPlan,
   materializePlan,
 } from "./plan.mjs";
 import {
@@ -37,8 +39,8 @@ export const HELP_TEXT = `Usage: dicoogle-plugin-bootstrap <command> [flags]
 
 Commands:
   init      Interactive wizard (not implemented)
-  java      Generate a Java Maven module (storage implemented)
-  web       Generate a web UI plugin folder (not implemented)
+  java      Generate a Java Maven module (storage, query-index, listener)
+  web       Generate a web UI plugin folder
   list      Show families, web hooks, and template pin status
   version   Show tool, Node, and template-lock versions
 
@@ -259,10 +261,47 @@ export async function main(
         );
         return EXIT_CODES.OK;
       }
-      case "init":
       case "web": {
+        const lock = loadLock();
+        validateReservedPluginId(
+          validated.values.id,
+          lock.reservedPluginIds,
+        );
+        const model = buildWebModel({
+          flags: parsed.flags,
+          values: validated.values,
+        });
+        const plan = buildWebPlan(model, lock);
+        const files = materializePlan(plan, {
+          templatesDir: DEFAULT_TEMPLATES_DIR,
+        });
+
+        if (parsed.flags.dryRun === true) {
+          io.stdout.write(
+            formatDryRunTree({
+              out: model.out,
+              files: plan.files,
+              force: parsed.flags.force === true,
+            }),
+          );
+          return EXIT_CODES.OK;
+        }
+
+        const result = writePlan({
+          out: model.out,
+          files,
+          force: parsed.flags.force === true,
+        });
+
         io.stdout.write(
-          `dicoogle-plugin-bootstrap: ${parsed.command} generation is not implemented yet (storage, query-index, and listener implemented).\n`,
+          `created ${files.length} file(s) in ${result.root}\n`,
+        );
+        return EXIT_CODES.OK;
+      }
+      case "init": {
+        io.stdout.write(
+          "dicoogle-plugin-bootstrap: init generation is not implemented yet " +
+            "(use java or web flags).\n",
         );
         return EXIT_CODES.OK;
       }

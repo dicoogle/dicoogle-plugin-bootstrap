@@ -15,6 +15,10 @@ import {
 import { expectedListenerMethods } from "./java/fragments/listener/index.mjs";
 import { expectedQueryIndexMethods } from "./java/fragments/query-index/index.mjs";
 import { expectedStorageMethods } from "./java/fragments/storage/index.mjs";
+import {
+  composeWebEntry,
+  webComponentTemplateFor,
+} from "./web/compose.mjs";
 
 export function escapeXml(value) {
   return String(value ?? "")
@@ -271,6 +275,82 @@ export function buildListenerPlan(model, lock) {
   };
 }
 
+export function buildWebData(model, lock) {
+  const pin = lock.dicoogleNext;
+
+  return {
+    ...model,
+    ...pin,
+    entry: model.entry,
+    apiVersion: model.apiVersion,
+    pluginType: model.pluginType,
+    hookList: model.hookList,
+    idJson: JSON.stringify(model.id),
+    apiVersionJson: JSON.stringify(model.apiVersion),
+    nameJson: JSON.stringify(model.name),
+    pluginVersionJson: JSON.stringify(model.pluginVersion),
+    descriptionJson: JSON.stringify(model.description),
+    authorJson: JSON.stringify(model.author),
+    pluginTypeJson: JSON.stringify(model.pluginType),
+    nameJs: JSON.stringify(model.name),
+    descriptionJs: JSON.stringify(model.description),
+    commit: pin.commit,
+  };
+}
+
+export function buildWebPlan(model, lock) {
+  const data = buildWebData(model, lock);
+  const files = [
+    {
+      path: "plugin.config.json",
+      kind: "template",
+      template: "web/plugin.config.json.tmpl",
+      data,
+    },
+    {
+      path: "README.md",
+      kind: "template",
+      template: "web/README.md.tmpl",
+      data,
+    },
+    {
+      path: model.entry,
+      kind: "web-entry",
+      data,
+    },
+  ];
+
+  for (const component of model.components) {
+    const template = webComponentTemplateFor(component.hook);
+
+    if (!template) {
+      throw new TemplateLockError(
+        `no web component template for hook "${component.hook}"`,
+      );
+    }
+
+    files.push({
+      path: component.file,
+      kind: "template",
+      template,
+      data: {
+        ...data,
+        ClassName: component.className,
+        hook: component.hook,
+      },
+    });
+  }
+
+  return {
+    root: model.out,
+    family: "web",
+    model,
+    lock,
+    data,
+    files,
+  };
+}
+
 function readTemplateFile(templatesDir, templatePath) {
   try {
     return readFileSync(
@@ -315,10 +395,23 @@ function validatePlanPaths(files) {
 function validateMaterializedPlan(plan, files) {
   validatePlanPaths(files);
 
+  if (plan.family === "web") {
+    const paths = new Set(files.map((file) => file.path));
+
+    if (!paths.has(plan.model.entry)) {
+      throw new TemplateLockError(
+        `web entry file is missing: ${plan.model.entry}`,
+      );
+    }
+  }
+
   for (const file of files) {
     const content = String(file.content);
 
-    if (content.includes("{{") || content.includes("}}")) {
+    if (
+      content.includes("{{") ||
+      (plan.family !== "web" && content.includes("}}"))
+    ) {
       throw new TemplateLockError(
         `unrendered template token in ${file.path}`,
       );
@@ -334,6 +427,46 @@ function validateMaterializedPlan(plan, files) {
       throw new TemplateLockError(
         `generated file must end with a newline: ${file.path}`,
       );
+    }
+
+    if (plan.family === "web") {
+      if (file.path === "package.json") {
+        throw new TemplateLockError(
+          "web plans must not emit package.json",
+        );
+      }
+
+      if (file.path === "plugin.config.json") {
+        let config;
+
+        try {
+          config = JSON.parse(content);
+        } catch (error) {
+          throw new TemplateLockError(
+            `web plugin.config.json is not valid JSON: ${error.message}`,
+          );
+        }
+
+        if (config.id !== plan.model.id) {
+          throw new TemplateLockError(
+            "web plugin.config.json id must match the plugin id",
+          );
+        }
+
+        if (config.entry !== plan.model.entry) {
+          throw new TemplateLockError(
+            "web plugin.config.json entry must match the generated entry",
+          );
+        }
+
+        if (config.apiVersion !== "1.0") {
+          throw new TemplateLockError(
+            'web plugin.config.json apiVersion must be "1.0"',
+          );
+        }
+      }
+
+      continue;
     }
 
     if (!file.path.endsWith(".java")) {
@@ -416,6 +549,8 @@ export function materializePlan(
       content = composeListenerClass(plan.model, entry.data);
     } else if (entry.kind === "listener-test") {
       content = composeListenerTest(plan.model, entry.data);
+    } else if (entry.kind === "web-entry") {
+      content = composeWebEntry(plan.model, entry.data);
     } else {
       throw new TemplateLockError(
         `unknown plan entry kind "${entry.kind}" for ${entry.path}`,

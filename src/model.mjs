@@ -1,5 +1,5 @@
 import { UsageError } from "./errors.mjs";
-import { deriveJavaIdentity } from "./naming.mjs";
+import { deriveJavaIdentity, deriveWebIdentity } from "./naming.mjs";
 
 const STORAGE_CAPABILITIES = [
   "readable",
@@ -259,5 +259,40 @@ export function buildListenerModel({ flags = {}, values }) {
     force: flags.force === true,
     dryRun: flags.dryRun === true,
     repo: flags.repo,
+  };
+}
+
+
+export function buildWebModel({ flags = {}, values }) {
+  if (!values || !Array.isArray(values.hooks) || values.hooks.length === 0) {
+    throw new UsageError(
+      "the web model requires at least one --hooks value.",
+    );
+  }
+
+  const identity = deriveWebIdentity({
+    id: values.id,
+    hooks: values.hooks,
+    typeOverride: values.type,
+    apiVersion: values.apiVersion,
+  });
+
+  return {
+    family: "web",
+    id: values.id,
+    name: values.name,
+    description: values.description,
+    author: values.author,
+    pluginVersion: values.pluginVersion,
+    license: values.license,
+    type: values.type,
+    ...identity,
+    pluginType: values.pluginType,
+    hookList: values.hooks.join(","),
+    out: flags.out ?? identity.id,
+    force: flags.force === true,
+    dryRun: flags.dryRun === true,
+    repo: flags.repo,
+    webApiVersion: values.apiVersion,
   };
 }
