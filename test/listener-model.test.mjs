@@ -20,7 +20,7 @@ test("listener identities follow Addendum A", () => {
   assert.equal(ingest.configPrefix, "app.query.my-audit");
   assert.equal(ingest.className, "MyAuditIngestListener");
   assert.deepEqual(ingest.interfaces, ["StorageIngestEventListener"]);
-  assert.equal(ingest.beanName, "ingestListener");
+  assert.equal(ingest.beanName, "myAuditIngestListener");
 
   const retrieve = listenerModel({ retrieve: true });
 
@@ -32,7 +32,7 @@ test("listener identities follow Addendum A", () => {
   assert.equal(retrieve.configPrefix, "app.service.my-audit");
   assert.equal(retrieve.className, "MyAuditRetrieveListener");
   assert.deepEqual(retrieve.interfaces, ["StorageRetrieveEventListener"]);
-  assert.equal(retrieve.beanName, "retrieveListener");
+  assert.equal(retrieve.beanName, "myAuditRetrieveListener");
 });
 
 test("listener defaults are enabled with matchIfMissing", () => {
