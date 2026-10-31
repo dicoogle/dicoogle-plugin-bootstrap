@@ -755,9 +755,9 @@ Dependencies by family:
 
 | Family | Compile | Test |
 |---|---|---|
-| storage | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `spring-boot-test`; `assertj-core` (required to compile `ApplicationContextRunner` use) |
+| storage | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `spring-boot-test` (required to compile `ApplicationContextRunner` use); `assertj-core` |
 | query-index | SDK; `dcm4che-core`; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `spring-boot-test`; `assertj-core` |
-| listener | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter` |
+| listener | SDK; `spring-context`; `spring-boot-autoconfigure` | `junit-jupiter`; `spring-boot-test`; `assertj-core` (required to compile `ApplicationContextRunner` use) |
 
 Do not add shade/assembly, `Main-Class`, relocation, or a custom `finalName`. No bundled backend POM uses them, and plugin jars are plain Maven jars baked into the Spring Boot fat jar (`backend/plugins/*/target/*.jar`; `backend/dicoogle-next/target/*.jar`).
 
