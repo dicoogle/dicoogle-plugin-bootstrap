@@ -92,3 +92,86 @@ test("listener config method names are unique per plugin id", () => {
     assert.match(config.content, new RegExp(`${model.beanName}\\(`));
   }
 });
+
+test("hyphenated and plain ids share a package but not classes or beans", () => {
+  const lock = loadLock();
+  const cases = [
+    [
+      "storage",
+      (id) => storageModel({ readable: true }, { id }),
+      buildStoragePlan,
+      "FooBarStoragePlugin",
+      "FoobarStoragePlugin",
+      "fooBarStoragePlugin",
+      "foobarStoragePlugin",
+      "org.dicoogle.storage.foobar",
+    ],
+    [
+      "query-index",
+      (id) => queryIndexModel({ query: true }, { id }),
+      buildQueryIndexPlan,
+      "FooBarQueryIndexPlugin",
+      "FoobarQueryIndexPlugin",
+      "fooBarQueryIndexPlugin",
+      "foobarQueryIndexPlugin",
+      "org.dicoogle.query.foobar",
+    ],
+    [
+      "listener ingest",
+      (id) => listenerModel({ ingest: true }, { id }),
+      buildListenerPlan,
+      "FooBarIngestListener",
+      "FoobarIngestListener",
+      "fooBarIngestListener",
+      "foobarIngestListener",
+      "org.dicoogle.query.foobar",
+    ],
+    [
+      "listener retrieve",
+      (id) => listenerModel({ retrieve: true }, { id }),
+      buildListenerPlan,
+      "FooBarRetrieveListener",
+      "FoobarRetrieveListener",
+      "fooBarRetrieveListener",
+      "foobarRetrieveListener",
+      "org.dicoogle.service.foobar",
+    ],
+  ];
+
+  for (const [
+    name,
+    makeModel,
+    buildPlan,
+    fooBarClass,
+    foobarClass,
+    fooBarBean,
+    foobarBean,
+    packageName,
+  ] of cases) {
+    const fooBar = makeModel("foo-bar");
+    const foobar = makeModel("foobar");
+
+    assert.equal(fooBar.className, fooBarClass, name);
+    assert.equal(foobar.className, foobarClass, name);
+    assert.equal(fooBar.beanName, fooBarBean, name);
+    assert.equal(foobar.beanName, foobarBean, name);
+    assert.equal(fooBar.package, packageName, name);
+    assert.equal(foobar.package, packageName, name);
+    assert.notEqual(fooBar.className, foobar.className, name);
+    assert.notEqual(fooBar.beanName, foobar.beanName, name);
+
+    const fooBarConfig = configFile(
+      materializePlan(buildPlan(fooBar, lock)),
+      fooBar.className,
+    );
+    const foobarConfig = configFile(
+      materializePlan(buildPlan(foobar, lock)),
+      foobar.className,
+    );
+
+    assert.ok(fooBarConfig, name);
+    assert.ok(foobarConfig, name);
+    assert.match(fooBarConfig.content, new RegExp(`${fooBar.beanName}\\(`), name);
+    assert.match(foobarConfig.content, new RegExp(`${foobar.beanName}\\(`), name);
+  }
+});

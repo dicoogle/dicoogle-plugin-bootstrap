@@ -103,6 +103,20 @@ const COLLISION_CASES = [
     artifactId: "dicoogle-next-storage-collision-st-b",
   },
   {
+    family: "storage",
+    name: "same-package-foo-bar",
+    id: "foo-bar",
+    flags: ["--readable", "--writable", "--listable", "--locator"],
+    artifactId: "dicoogle-next-storage-foo-bar",
+  },
+  {
+    family: "storage",
+    name: "same-package-foobar",
+    id: "foobar",
+    flags: ["--readable", "--writable", "--listable", "--locator"],
+    artifactId: "dicoogle-next-storage-foobar",
+  },
+  {
     family: "query-index",
     name: "query-a",
     id: "collision-q-a",
@@ -505,6 +519,8 @@ import org.springframework.test.context.ActiveProfiles;
     properties = {
       "app.storage.collision-st-a.enabled=true",
       "app.storage.collision-st-b.enabled=true",
+      "app.storage.foo-bar.enabled=true",
+      "app.storage.foobar.enabled=true",
       "app.query.lucene.enabled=false"
     })
 @ActiveProfiles("test")
@@ -524,6 +540,17 @@ class BeanCollisionProbeTest {
 
     System.out.println("COLLISION_STORAGE=" + ids);
     assertTrue(ids.containsAll(List.of("collision-st-a", "collision-st-b")), ids.toString());
+  }
+
+  @Test
+  void samePackageStorageModulesCoexist() {
+    List<String> ids =
+        activeStoragePlugins.plugins().stream()
+            .map(plugin -> plugin.metadata().id())
+            .toList();
+
+    System.out.println("SAME_PACKAGE_STORAGE=" + ids);
+    assertTrue(ids.containsAll(List.of("foo-bar", "foobar")), ids.toString());
   }
 
   @Test
