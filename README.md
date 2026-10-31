@@ -51,8 +51,10 @@ and, where meaningful, includes a suggested valid form.
   semver-like; packages, schemes, SPDX license ids, API versions, policy targets,
   and web hooks are validated.
 - A package collision warning is produced when ids such as `foo-bar` and
-  `foobar` normalize to the same Java package segment. Use `--package` to
-  disambiguate.
+  `foobar` normalize to the same Java package segment. Their class and bean
+  names still differ (`FooBarStoragePlugin` / `fooBarStoragePlugin` versus
+  `FoobarStoragePlugin` / `foobarStoragePlugin`). Use `--package` to choose a
+  distinct Java package if split packages are not acceptable.
 
 ## Storage generation
 
@@ -223,7 +225,7 @@ node scripts/build-fixtures.mjs --repo /path/to/dicoogle-next \
 ```
 
 `--only <case[,case]>` runs selected cases; `--only collision` expands to the
-eight collision modules. `--skip-standalone` and `--skip-full-reactor` speed up
+ten collision modules. `--skip-standalone` and `--skip-full-reactor` speed up
 local iteration.
 
 ## Design

@@ -1065,7 +1065,7 @@ No generated docs modify dicoogle-next’s own documentation.
 | R16 | Web examples are not built and `webapp/src/plugins` is empty. | Templates are derived from documentation examples, not a live plugin. | CI copies generated output into a real temp checkout and runs lint/type-check/build. |
 | R17 | Docs drift: `WebUIPlugin` snippets omit getter args; docs use `dicoogleService` directly; `apiVersion` mismatch. | Generated code copied from docs could fail. | Derive from `types.ts` and `plugin-loader.ts`, not prose docs; document drift. |
 | R18 | `--repo` id scan is regex-based. | False positives/negatives. | Scan only `src/main` Java and live web plugin configs; generated `PluginMetadata` uses a literal; document heuristic. |
-| R19 | Java package normalization strips hyphens, so `foo-bar` and `foobar` collide. | Two plugins cannot coexist with distinct default packages. | Warn on normalization collision; allow `--package` override. |
+| R19 | Java package normalization strips hyphens, so `foo-bar` and `foobar` share a default package. | Split package; class/bean names remain distinct and both modules can coexist, verified by the collision probe. | Warn on normalization collision; allow `--package` override. |
 | R20 | Generated storage default scheme could collide with `file` and alter routing. | Unexpected storage behavior. | Default scheme = id; storage templates default `enabled=false`; document YAML. |
 | R21 | JUnit is resolved as 6.0.3, not 5.x. | Dependency confusion if a version is pinned. | Use Jupiter API, no version; parent BOM manages. |
 | R22 | The tool’s zero-dependency constraint means no schema/arg library. | More custom code to test. | Keep parser/renderer small, typed, and unit-tested; no reason to abandon zero dependencies. |
@@ -1314,35 +1314,44 @@ bean names.
 generates and wires:
 
 - two storage modules with different schemes
+- two storage modules with ids `foo-bar` and `foobar` that share the package
+  `org.dicoogle.storage.foobar`
 - two all-flags query-index modules
 - two ingest listeners
 - two retrieve listeners
 
-All eight modules are added to the temp app and built in the full reactor. A
-generated `BeanCollisionProbeTest` starts the app context with both storage
-modules enabled and asserts the consumed lists contain both modules. Lucene is
-disabled only for that probe context to avoid its JVM-level write-lock conflict
-between multiple cached test contexts.
+All ten modules are added to the temp app and built in the full reactor. A
+generated `BeanCollisionProbeTest` starts the app context with the storage
+modules enabled and asserts the consumed lists contain them. Lucene is disabled
+only for that probe context to avoid its JVM-level write-lock conflict between
+multiple cached test contexts.
+
+For `foo-bar` and `foobar`, the class names are `FooBarStoragePlugin` and
+`FoobarStoragePlugin`, and the bean method names are `fooBarStoragePlugin` and
+`foobarStoragePlugin`. Only the package segment collides; the generated classes
+and beans are distinct and the shared-package pair starts in the same context.
+This corrects an earlier report claim that the class names were identical.
 
 Observed collision probe output:
 
 ```text
-COLLISION_STORAGE=[storage-file-ro, collision-st-a, collision-st-b]
-COLLISION_QUERY=[collision-q-b, query-file-rw, collision-q-a]
-COLLISION_MOVE=[collision-q-b, query-file-rw, collision-q-a]
-COLLISION_INGEST=[query-file-rw, collision-q-a, collision-q-b, collision-ing-a, collision-ing-b]
-COLLISION_RETRIEVE=[collision-ret-a, collision-ret-b]
+COLLISION_STORAGE=[storage-file-ro, collision-st-a, collision-st-b, foo-bar, foobar]
+SAME_PACKAGE_STORAGE=[storage-file-ro, collision-st-a, collision-st-b, foo-bar, foobar]
+COLLISION_QUERY=[collision-q-b, collision-q-a, query-file-rw, fixture-qall]
+COLLISION_MOVE=[collision-q-b, collision-q-a, query-file-rw, fixture-qall]
+COLLISION_INGEST=[query-file-rw, fixture-qall, fixture-lst-ing, collision-q-a, collision-q-b, collision-ing-a, collision-ing-b]
+COLLISION_RETRIEVE=[fixture-lst-ret, collision-ret-a, collision-ret-b]
 ```
 
 The app context started without `BeanDefinitionOverrideException`, and the full
-reactor with all eight modules passed.
+reactor with all ten modules passed.
 
 ### Faster fixture runs
 
 `scripts/build-fixtures.mjs` now supports:
 
 - `--only <case[,case]>` to run selected cases; `--only collision` expands to
-  the eight collision cases
+  the ten collision cases
 - `--skip-standalone` to skip standalone builds
 - `--skip-full-reactor` to skip the reactor build
 
