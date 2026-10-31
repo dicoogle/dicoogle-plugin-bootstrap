@@ -17,8 +17,8 @@ public class {{ClassName}}Config {
       name = "enabled",
       havingValue = "true",
       matchIfMissing = {{matchIfMissing}})
-{{#if configMethodOneLine}}  {{ClassName}} queryIndexPlugin({{ClassName}}Properties properties) {
-{{/if}}{{#unless configMethodOneLine}}  {{ClassName}} queryIndexPlugin(
+{{#if configMethodOneLine}}  {{ClassName}} {{beanName}}({{ClassName}}Properties properties) {
+{{/if}}{{#unless configMethodOneLine}}  {{ClassName}} {{beanName}}(
       {{ClassName}}Properties properties) {
 {{/unless}}    return new {{ClassName}}(properties);
   }

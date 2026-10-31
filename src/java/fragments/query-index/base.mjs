@@ -113,7 +113,7 @@ export default {
         "    .run(",
         "        context -> {",
         "          assertEquals(1, context.getBeansOfType(QueryIndexPlugin.class).size());",
-        "          QueryIndexPlugin plugin = context.getBean(\"queryIndexPlugin\", QueryIndexPlugin.class);",
+        "          QueryIndexPlugin plugin = context.getBean(\"{{beanName}}\", QueryIndexPlugin.class);",
         "          assertEquals(\"{{id}}\", plugin.metadata().id());",
         "          assertEquals(\"{{pluginType}}\", plugin.metadata().type());",
         "        });",

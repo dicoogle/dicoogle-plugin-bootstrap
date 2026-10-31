@@ -76,9 +76,10 @@
     },
     "java/storage/config.java.tmpl": {
       "source": "internal:java/storage/config.java.tmpl",
-      "sha256": "cd53eb34b7ee7223089b1ca3656ae30ea0b0bb4a4a25fe95dce27cd7e8bbf89f",
+      "sha256": "f2acdccaeb24bbaea88851cd1ad8401b4b98d114c42c0dcfcbd2d282871cac9b",
       "placeholders": [
         "ClassName",
+        "beanName",
         "configMethodOneLine",
         "configPrefix",
         "configReturnOneLine",
@@ -143,9 +144,10 @@
     },
     "java/query-index/config.java.tmpl": {
       "source": "internal:java/query-index/config.java.tmpl",
-      "sha256": "a4f87903264f988c0d36809da4425cc593a002d6cdc76d51c7a5aab889032ee2",
+      "sha256": "d71aa9fd484f51d734b0f6bde79bd5ab6e2df0355522e4caf859d54cac4f1a27",
       "placeholders": [
         "ClassName",
+        "beanName",
         "configMethodOneLine",
         "configPrefix",
         "licenseHeader",

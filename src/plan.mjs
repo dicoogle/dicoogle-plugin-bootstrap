@@ -39,7 +39,7 @@ export function buildStorageData(model, lock) {
     nameXml: escapeXml(model.name),
     descriptionXml: escapeXml(model.description),
     configMethodOneLine:
-      `  ${model.className} storagePlugin(${model.className}Properties properties) {`
+      `  ${model.className} ${model.beanName}(${model.className}Properties properties) {`
         .length <= 100,
     configReturnOneLine:
       `    return new ${model.className}(Path.of(properties.getRootDir()), properties.getScheme());`
@@ -124,7 +124,7 @@ export function buildQueryIndexData(model, lock) {
     nameXml: escapeXml(model.name),
     descriptionXml: escapeXml(model.description),
     configMethodOneLine:
-      `  ${model.className} queryIndexPlugin(${model.className}Properties properties) {`
+      `  ${model.className} ${model.beanName}(${model.className}Properties properties) {`
         .length <= 100,
     propertiesAnnotationOneLine:
       `@ConfigurationProperties(prefix = "${model.configPrefix}")`.length <= 100,

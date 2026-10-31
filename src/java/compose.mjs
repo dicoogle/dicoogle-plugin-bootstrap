@@ -239,6 +239,32 @@ function wrapLongLine(line, maxLength = 100) {
     ];
   }
 
+  if (trimmed.startsWith("context.getBean(")) {
+    const index = line.indexOf("(");
+    const rest = line.slice(index + 1);
+    const combined = `${" ".repeat(leading + 4)}${rest}`;
+
+    if (combined.length <= maxLength) {
+      return [line.slice(0, index + 1), combined];
+    }
+
+    const args = splitTopLevelArguments(rest);
+
+    if (args.length > 1) {
+      return [
+        line.slice(0, index + 1),
+        ...args.map(
+          (argument, argIndex) =>
+            `${" ".repeat(leading + 4)}${argument}${
+              argIndex === args.length - 1 ? "" : ","
+            }`,
+        ),
+      ];
+    }
+
+    return [line.slice(0, index + 1), combined];
+  }
+
   if (trimmed.startsWith("assertTrue(")) {
     const index = line.indexOf("(");
     return [

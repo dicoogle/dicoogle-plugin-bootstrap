@@ -255,7 +255,6 @@ export function buildListenerModel({ flags = {}, values }) {
     capabilities: [listenerKind],
     enabledDefault: true,
     matchIfMissing: true,
-    beanName: ingest ? "ingestListener" : "retrieveListener",
     out: flags.out ?? identity.artifactId,
     force: flags.force === true,
     dryRun: flags.dryRun === true,

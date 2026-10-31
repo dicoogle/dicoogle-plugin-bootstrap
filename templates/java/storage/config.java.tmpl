@@ -18,8 +18,8 @@ public class {{ClassName}}Config {
       name = "enabled",
       havingValue = "true",
       matchIfMissing = {{matchIfMissing}})
-{{#if configMethodOneLine}}  {{ClassName}} storagePlugin({{ClassName}}Properties properties) {
-{{/if}}{{#unless configMethodOneLine}}  {{ClassName}} storagePlugin(
+{{#if configMethodOneLine}}  {{ClassName}} {{beanName}}({{ClassName}}Properties properties) {
+{{/if}}{{#unless configMethodOneLine}}  {{ClassName}} {{beanName}}(
       {{ClassName}}Properties properties) {
 {{/unless}}{{#if configReturnOneLine}}    return new {{ClassName}}(Path.of(properties.getRootDir()), properties.getScheme());
 {{/if}}{{#unless configReturnOneLine}}    return new {{ClassName}}(

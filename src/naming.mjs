@@ -47,6 +47,13 @@ export function titleCase(id) {
   return idTokens(id).map(capitalizeToken).join(" ");
 }
 
+export function lowerCamelCase(value) {
+  const text = String(value);
+  return text.length === 0
+    ? text
+    : text.charAt(0).toLowerCase() + text.slice(1);
+}
+
 export function packageSegment(id) {
   return String(id).replaceAll("-", "");
 }
@@ -157,6 +164,9 @@ export function deriveJavaIdentity({
     scheme: family === "storage" ? scheme ?? id : undefined,
     classes,
     className: classes[0]?.className ?? null,
+    beanName: classes[0]?.className
+      ? lowerCamelCase(classes[0].className)
+      : null,
   };
 }
 
