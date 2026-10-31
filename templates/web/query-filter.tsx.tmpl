@@ -1,0 +1,27 @@
+import { QueryFilterProps } from "@/plugin-system";
+
+export default function {{ClassName}}({
+  value,
+  onChange,
+  context,
+}: QueryFilterProps) {
+  const enabled = Boolean(value?.enabled);
+
+  return (
+    <div className="space-y-2 rounded-lg border border-border bg-card p-4">
+      <label className="flex items-center gap-2 text-sm font-medium">
+        <input
+          type="checkbox"
+          checked={enabled}
+          onChange={(event) => {
+            const next = event.target.checked;
+            onChange({ enabled: next });
+            context.logger.info({{nameJs}}, { enabled: next });
+          }}
+        />
+        { {{nameJs}} }
+      </label>
+      <p className="text-sm text-muted-foreground">{ {{descriptionJs}} }</p>
+    </div>
+  );
+}

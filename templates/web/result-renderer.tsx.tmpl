@@ -1,0 +1,44 @@
+import { ResultRendererProps } from "@/plugin-system";
+
+export default function {{ClassName}}({
+  results,
+  loading,
+  context,
+  onResultSelect,
+}: ResultRendererProps) {
+  if (loading) {
+    return (
+      <div className="rounded-lg border border-border p-6 text-sm text-muted-foreground">
+        Loading results...
+      </div>
+    );
+  }
+
+  if (results.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed border-border p-6 text-sm text-muted-foreground">
+        No results to display.
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-2">
+      {results.map((result, index) => (
+        <button
+          key={result.uri ?? String(index)}
+          type="button"
+          className="w-full rounded-lg border border-border bg-card p-4 text-left hover:bg-muted/40"
+          onClick={() => {
+            context.logger.info({{nameJs}}, { uri: result.uri });
+            onResultSelect?.(result);
+          }}
+        >
+          <span className="font-medium">
+            {String(result.fields?.PatientName ?? result.uri ?? "Result")}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}

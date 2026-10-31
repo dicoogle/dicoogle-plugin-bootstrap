@@ -236,6 +236,69 @@
         "package",
         "propertiesAnnotationOneLine"
       ]
+    },
+    "web/plugin.config.json.tmpl": {
+      "source": "internal:web/plugin.config.json.tmpl",
+      "sha256": "0719701fa60c9e29eaf530e0f459f59f774d749f6d50e6234b26c7da5c6350d8",
+      "placeholders": [
+        "apiVersionJson",
+        "authorJson",
+        "descriptionJson",
+        "entry",
+        "idJson",
+        "nameJson",
+        "pluginTypeJson",
+        "pluginVersionJson"
+      ]
+    },
+    "web/README.md.tmpl": {
+      "source": "internal:web/README.md.tmpl",
+      "sha256": "6d906a75965c9bf062ba3e77e596db228884d3d7ad1557aadce85340c449728c",
+      "placeholders": [
+        "apiVersion",
+        "commit",
+        "description",
+        "entry",
+        "hookList",
+        "id",
+        "name",
+        "pluginType"
+      ]
+    },
+    "web/query-filter.tsx.tmpl": {
+      "source": "internal:web/query-filter.tsx.tmpl",
+      "sha256": "ac3aa453763d1bf836fc240a1ed7541a94036045f42c2906fc2c70651157fa3c",
+      "placeholders": [
+        "ClassName",
+        "descriptionJs",
+        "nameJs"
+      ]
+    },
+    "web/result-renderer.tsx.tmpl": {
+      "source": "internal:web/result-renderer.tsx.tmpl",
+      "sha256": "0bd21b2dccdf3cb2f78c7626251d9ac6177fc50edb1ec97278e1a4b6c2b53baf",
+      "placeholders": [
+        "ClassName",
+        "nameJs"
+      ]
+    },
+    "web/route.tsx.tmpl": {
+      "source": "internal:web/route.tsx.tmpl",
+      "sha256": "f38c11407957b771ffb30449826af0aa1f32134fc8e9aae951c634af39f4b2aa",
+      "placeholders": [
+        "ClassName",
+        "descriptionJs",
+        "nameJs"
+      ]
+    },
+    "web/settings.tsx.tmpl": {
+      "source": "internal:web/settings.tsx.tmpl",
+      "sha256": "71145beebab7bbded35ffb85d9b3998cda0ebe13dc548ea635ead3c0dacf0bda",
+      "placeholders": [
+        "ClassName",
+        "descriptionJs",
+        "nameJs"
+      ]
     }
   }
 }

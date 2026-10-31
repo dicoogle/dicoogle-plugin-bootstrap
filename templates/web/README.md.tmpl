@@ -1,0 +1,40 @@
+# {{name}}
+
+{{description}}
+
+- Plugin id: `{{id}}`
+- Entry: `{{entry}}`
+- API version: `{{apiVersion}}`
+- Plugin type: `{{pluginType}}`
+- Hooks: `{{hookList}}`
+- dicoogle-next: `{{commit}}`
+
+## Files
+
+- `plugin.config.json` — plugin metadata and discovery config.
+- `index.ts` — JSX-free entry object; icons use `createElement`.
+- Generated `.tsx` components for the selected UI hooks.
+
+No `package.json` is generated. The host webapp provides React, TypeScript,
+Vite, and `@/plugin-system`.
+
+## Wiring
+
+Copy this folder to dicoogle-next:
+
+```bash
+cp -R . /path/to/dicoogle-next/webapp/src/plugins/{{id}}
+cd /path/to/dicoogle-next/webapp
+npm ci
+npm run lint
+npm run type-check
+npm run build
+```
+
+Restart Vite after adding a new directory; the plugin loader discovers new
+folders at startup and does not watch for them.
+
+## TODO
+
+Replace the minimal hook implementations and components with real UI logic.
+Keep the extension ids stable unless you also update any persisted settings.
