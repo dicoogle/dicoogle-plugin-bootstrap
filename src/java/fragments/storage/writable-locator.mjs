@@ -1,0 +1,38 @@
+export default {
+  id: "storage.writable-locator",
+  imports: [],
+  interfaces: [],
+  methods: [],
+  testImports: [
+    "java.io.ByteArrayInputStream",
+    "java.io.ByteArrayOutputStream",
+    "org.dcm4che3.data.Attributes",
+    "org.dcm4che3.data.Tag",
+    "org.dcm4che3.data.UID",
+    "org.dcm4che3.data.VR",
+    "org.dcm4che3.io.DicomOutputStream",
+    "static org.junit.jupiter.api.Assertions.assertArrayEquals",
+  ],
+  tests: [
+    {
+      name: "storesDicomUnderSopUidAndLocatesIt",
+      body: [
+        "Attributes attributes = new Attributes();",
+        "attributes.setString(Tag.SOPClassUID, VR.UI, \"1.2.840.10008.5.1.4.1.1.7\");",
+        "attributes.setString(Tag.SOPInstanceUID, VR.UI, \"1.2.3.4.5\");",
+        "ByteArrayOutputStream buffer = new ByteArrayOutputStream();",
+        "try (DicomOutputStream out = new DicomOutputStream(buffer, UID.ExplicitVRLittleEndian)) {",
+        "  out.writeDataset(",
+        "      attributes.createFileMetaInformation(UID.ExplicitVRLittleEndian), attributes);",
+        "}",
+        "byte[] dicom = buffer.toByteArray();",
+        "{{ClassName}} plugin = new {{ClassName}}(tempDir, \"{{scheme}}\");",
+        "var stored = plugin.store(new ByteArrayInputStream(dicom), \"application/dicom\");",
+        "var located = plugin.locateInstance(null, null, \"1.2.3.4.5\");",
+        "assertTrue(located.isPresent());",
+        "assertArrayEquals(dicom, plugin.openForRead(located.get()).readAllBytes());",
+        "assertArrayEquals(dicom, plugin.openForRead(stored.location()).readAllBytes());",
+      ],
+    },
+  ],
+};

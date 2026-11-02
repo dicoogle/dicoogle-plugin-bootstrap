@@ -19,19 +19,19 @@ export default {
       signature:
         "public List<URI> listChildren(URI parent) throws IOException",
       body: [
-        "Path directory = Path.of(parent);",
+        "Path directory = pathOf(parent);",
         "if (!Files.isDirectory(directory)) {",
         "  return List.of();",
         "}",
         "try (var children = Files.list(directory)) {",
-        "  return children.map(Path::toUri).toList();",
+        "  return children.map(this::toLocation).toList();",
         "}",
       ],
     },
     {
       name: "isDirectory",
       signature: "public boolean isDirectory(URI location) throws IOException",
-      body: ["return Files.isDirectory(Path.of(location));"],
+      body: ["return Files.isDirectory(pathOf(location));"],
     },
   ],
   testImports: [
@@ -46,7 +46,9 @@ export default {
         "Path child = tempDir.resolve(\"child.dcm\");",
         "Files.write(child, new byte[] {7});",
         "{{ClassName}} plugin = new {{ClassName}}(tempDir, \"{{scheme}}\");",
-        "assertTrue(plugin.listChildren(tempDir.toUri()).contains(child.toUri()));",
+        "var children = plugin.listChildren(tempDir.toUri());",
+        "assertTrue(",
+        "    children.stream().anyMatch(uri -> Path.of(uri.getPath()).equals(child.toAbsolutePath())));",
         "assertTrue(plugin.isDirectory(tempDir.toUri()));",
       ],
     },

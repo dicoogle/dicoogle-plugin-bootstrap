@@ -31,9 +31,21 @@ public class MyStoreStoragePlugin implements ReadableStoragePlugin {
     return scheme;
   }
 
+  private URI toLocation(Path path) {
+    return scheme.equalsIgnoreCase("file")
+        ? path.toUri()
+        : URI.create(scheme + ":" + path.toAbsolutePath());
+  }
+
+  private Path pathOf(URI location) {
+    return "file".equalsIgnoreCase(location.getScheme())
+        ? Path.of(location)
+        : Path.of(location.getPath());
+  }
+
   @Override
   public InputStream openForRead(URI location) throws IOException {
-    Path path = Path.of(location);
+    Path path = pathOf(location);
     return Files.newInputStream(path);
   }
 }

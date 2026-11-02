@@ -32,25 +32,37 @@ public class MyStoreStoragePlugin implements ListableStoragePlugin {
     return scheme;
   }
 
+  private URI toLocation(Path path) {
+    return scheme.equalsIgnoreCase("file")
+        ? path.toUri()
+        : URI.create(scheme + ":" + path.toAbsolutePath());
+  }
+
+  private Path pathOf(URI location) {
+    return "file".equalsIgnoreCase(location.getScheme())
+        ? Path.of(location)
+        : Path.of(location.getPath());
+  }
+
   @Override
   public InputStream openForRead(URI location) throws IOException {
-    Path path = Path.of(location);
+    Path path = pathOf(location);
     return Files.newInputStream(path);
   }
 
   @Override
   public List<URI> listChildren(URI parent) throws IOException {
-    Path directory = Path.of(parent);
+    Path directory = pathOf(parent);
     if (!Files.isDirectory(directory)) {
       return List.of();
     }
     try (var children = Files.list(directory)) {
-      return children.map(Path::toUri).toList();
+      return children.map(this::toLocation).toList();
     }
   }
 
   @Override
   public boolean isDirectory(URI location) throws IOException {
-    return Files.isDirectory(Path.of(location));
+    return Files.isDirectory(pathOf(location));
   }
 }

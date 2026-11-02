@@ -1,5 +1,6 @@
 package org.dicoogle.storage.mystore;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -7,6 +8,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Objects;
 import java.util.UUID;
+import org.dcm4che3.data.Tag;
+import org.dcm4che3.io.DicomInputStream;
 import org.dicoogle.sdk.PluginMetadata;
 import org.dicoogle.sdk.storage.ReadableStoragePlugin;
 import org.dicoogle.sdk.storage.StoredObject;
@@ -34,9 +37,21 @@ public class MyStoreStoragePlugin implements ReadableStoragePlugin, WritableStor
     return scheme;
   }
 
+  private URI toLocation(Path path) {
+    return scheme.equalsIgnoreCase("file")
+        ? path.toUri()
+        : URI.create(scheme + ":" + path.toAbsolutePath());
+  }
+
+  private Path pathOf(URI location) {
+    return "file".equalsIgnoreCase(location.getScheme())
+        ? Path.of(location)
+        : Path.of(location.getPath());
+  }
+
   @Override
   public InputStream openForRead(URI location) throws IOException {
-    Path path = Path.of(location);
+    Path path = pathOf(location);
     return Files.newInputStream(path);
   }
 
@@ -44,8 +59,18 @@ public class MyStoreStoragePlugin implements ReadableStoragePlugin, WritableStor
   public StoredObject store(InputStream data, String contentType) throws IOException {
     byte[] bytes = data.readAllBytes();
     Files.createDirectories(rootDirectory);
-    Path target = rootDirectory.resolve(UUID.randomUUID() + ".dcm");
+    String sopInstanceUid = null;
+    try (DicomInputStream dicom = new DicomInputStream(new ByteArrayInputStream(bytes))) {
+      sopInstanceUid = dicom.readDataset().getString(Tag.SOPInstanceUID);
+    } catch (IOException ignored) {
+      // Non-DICOM payloads keep the generated-name fallback.
+    }
+    String fileName =
+        sopInstanceUid == null || sopInstanceUid.isBlank()
+            ? UUID.randomUUID() + ".dcm"
+            : sopInstanceUid.replaceAll("[^A-Za-z0-9._-]", "_") + ".dcm";
+    Path target = rootDirectory.resolve(fileName);
     Files.write(target, bytes);
-    return new StoredObject(target.toUri(), bytes.length, contentType);
+    return new StoredObject(toLocation(target), bytes.length, contentType);
   }
 }

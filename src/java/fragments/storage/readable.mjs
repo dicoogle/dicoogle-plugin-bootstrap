@@ -3,7 +3,7 @@ export const openForReadMethod = {
   signature:
     "public InputStream openForRead(URI location) throws IOException",
   body: [
-    "Path path = Path.of(location);",
+    "Path path = pathOf(location);",
     "return Files.newInputStream(path);",
   ],
 };

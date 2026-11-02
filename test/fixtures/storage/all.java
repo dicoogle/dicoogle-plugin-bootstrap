@@ -1,5 +1,6 @@
 package org.dicoogle.storage.mystore;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.URI;
@@ -9,6 +10,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import org.dcm4che3.data.Tag;
+import org.dcm4che3.io.DicomInputStream;
 import org.dicoogle.sdk.PluginMetadata;
 import org.dicoogle.sdk.storage.DicomInstanceLocator;
 import org.dicoogle.sdk.storage.ListableStoragePlugin;
@@ -38,35 +41,57 @@ public class MyStoreStoragePlugin
     return scheme;
   }
 
+  private URI toLocation(Path path) {
+    return scheme.equalsIgnoreCase("file")
+        ? path.toUri()
+        : URI.create(scheme + ":" + path.toAbsolutePath());
+  }
+
+  private Path pathOf(URI location) {
+    return "file".equalsIgnoreCase(location.getScheme())
+        ? Path.of(location)
+        : Path.of(location.getPath());
+  }
+
   @Override
   public InputStream openForRead(URI location) throws IOException {
-    Path path = Path.of(location);
+    Path path = pathOf(location);
     return Files.newInputStream(path);
   }
 
   @Override
   public List<URI> listChildren(URI parent) throws IOException {
-    Path directory = Path.of(parent);
+    Path directory = pathOf(parent);
     if (!Files.isDirectory(directory)) {
       return List.of();
     }
     try (var children = Files.list(directory)) {
-      return children.map(Path::toUri).toList();
+      return children.map(this::toLocation).toList();
     }
   }
 
   @Override
   public boolean isDirectory(URI location) throws IOException {
-    return Files.isDirectory(Path.of(location));
+    return Files.isDirectory(pathOf(location));
   }
 
   @Override
   public StoredObject store(InputStream data, String contentType) throws IOException {
     byte[] bytes = data.readAllBytes();
     Files.createDirectories(rootDirectory);
-    Path target = rootDirectory.resolve(UUID.randomUUID() + ".dcm");
+    String sopInstanceUid = null;
+    try (DicomInputStream dicom = new DicomInputStream(new ByteArrayInputStream(bytes))) {
+      sopInstanceUid = dicom.readDataset().getString(Tag.SOPInstanceUID);
+    } catch (IOException ignored) {
+      // Non-DICOM payloads keep the generated-name fallback.
+    }
+    String fileName =
+        sopInstanceUid == null || sopInstanceUid.isBlank()
+            ? UUID.randomUUID() + ".dcm"
+            : sopInstanceUid.replaceAll("[^A-Za-z0-9._-]", "_") + ".dcm";
+    Path target = rootDirectory.resolve(fileName);
     Files.write(target, bytes);
-    return new StoredObject(target.toUri(), bytes.length, contentType);
+    return new StoredObject(toLocation(target), bytes.length, contentType);
   }
 
   @Override
@@ -76,7 +101,7 @@ public class MyStoreStoragePlugin
       return Optional.empty();
     }
     Path candidate = rootDirectory.resolve(safeSegment(sopInstanceUid) + ".dcm");
-    return Files.isRegularFile(candidate) ? Optional.of(candidate.toUri()) : Optional.empty();
+    return Files.isRegularFile(candidate) ? Optional.of(toLocation(candidate)) : Optional.empty();
   }
 
   @Override

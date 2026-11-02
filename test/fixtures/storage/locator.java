@@ -34,9 +34,21 @@ public class MyStoreStoragePlugin implements ReadableStoragePlugin, DicomInstanc
     return scheme;
   }
 
+  private URI toLocation(Path path) {
+    return scheme.equalsIgnoreCase("file")
+        ? path.toUri()
+        : URI.create(scheme + ":" + path.toAbsolutePath());
+  }
+
+  private Path pathOf(URI location) {
+    return "file".equalsIgnoreCase(location.getScheme())
+        ? Path.of(location)
+        : Path.of(location.getPath());
+  }
+
   @Override
   public InputStream openForRead(URI location) throws IOException {
-    Path path = Path.of(location);
+    Path path = pathOf(location);
     return Files.newInputStream(path);
   }
 
@@ -47,7 +59,7 @@ public class MyStoreStoragePlugin implements ReadableStoragePlugin, DicomInstanc
       return Optional.empty();
     }
     Path candidate = rootDirectory.resolve(safeSegment(sopInstanceUid) + ".dcm");
-    return Files.isRegularFile(candidate) ? Optional.of(candidate.toUri()) : Optional.empty();
+    return Files.isRegularFile(candidate) ? Optional.of(toLocation(candidate)) : Optional.empty();
   }
 
   @Override

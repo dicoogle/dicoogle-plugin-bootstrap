@@ -1,6 +1,7 @@
 export default {
   id: "storage.base",
   imports: [
+    "java.net.URI",
     "java.nio.file.Path",
     "java.util.Objects",
     "org.dicoogle.sdk.PluginMetadata",
@@ -28,6 +29,26 @@ export default {
       name: "scheme",
       signature: "public String scheme()",
       body: ["return scheme;"],
+    },
+    {
+      name: "toLocation",
+      signature: "private URI toLocation(Path path)",
+      override: false,
+      body: [
+        "return scheme.equalsIgnoreCase(\"file\")",
+        "    ? path.toUri()",
+        "    : URI.create(scheme + \":\" + path.toAbsolutePath());",
+      ],
+    },
+    {
+      name: "pathOf",
+      signature: "private Path pathOf(URI location)",
+      override: false,
+      body: [
+        "return \"file\".equalsIgnoreCase(location.getScheme())",
+        "    ? Path.of(location)",
+        "    : Path.of(location.getPath());",
+      ],
     },
   ],
   testImports: [

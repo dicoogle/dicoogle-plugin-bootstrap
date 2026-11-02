@@ -4,6 +4,7 @@ import locator from "./locator.mjs";
 import readable from "./readable.mjs";
 import roundTrip from "./round-trip.mjs";
 import writable from "./writable.mjs";
+import writableLocator from "./writable-locator.mjs";
 
 export {
   base,
@@ -12,6 +13,7 @@ export {
   readable,
   roundTrip,
   writable,
+  writableLocator,
 };
 
 export const STORAGE_INTERFACE_METHODS = Object.freeze({
@@ -58,6 +60,10 @@ export function storageTestFragments(model) {
 
   if (model.writable) {
     fragments.push(writable);
+  }
+
+  if (model.writable && model.locator) {
+    fragments.push(writableLocator);
   }
 
   if (model.readable && model.writable) {
