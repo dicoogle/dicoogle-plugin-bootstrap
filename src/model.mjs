@@ -1,5 +1,23 @@
+import path from "node:path";
+
 import { UsageError } from "./errors.mjs";
 import { deriveJavaIdentity, deriveWebIdentity } from "./naming.mjs";
+
+function resolveJavaOutput(flags, identity) {
+  if (flags.out !== undefined) {
+    return flags.out;
+  }
+
+  if (flags.project !== undefined) {
+    return path.resolve(
+      flags.project,
+      "plugins",
+      identity.artifactId,
+    );
+  }
+
+  return identity.artifactId;
+}
 
 const STORAGE_CAPABILITIES = [
   "readable",
@@ -94,7 +112,8 @@ export function buildStorageModel({ flags = {}, values }) {
     interfaces,
     enabledDefault: false,
     matchIfMissing: false,
-    out: flags.out ?? identity.artifactId,
+    project: flags.project ?? null,
+    out: resolveJavaOutput(flags, identity),
     force: flags.force === true,
     dryRun: flags.dryRun === true,
   };
@@ -197,7 +216,8 @@ export function buildQueryIndexModel({ flags = {}, values }) {
     enabledDefault: false,
     matchIfMissing: false,
     indexId: values.id,
-    out: flags.out ?? identity.artifactId,
+    project: flags.project ?? null,
+    out: resolveJavaOutput(flags, identity),
     force: flags.force === true,
     dryRun: flags.dryRun === true,
   };
@@ -253,7 +273,8 @@ export function buildListenerModel({ flags = {}, values }) {
     capabilities: [listenerKind],
     enabledDefault: false,
     matchIfMissing: false,
-    out: flags.out ?? identity.artifactId,
+    project: flags.project ?? null,
+    out: resolveJavaOutput(flags, identity),
     force: flags.force === true,
     dryRun: flags.dryRun === true,
   };

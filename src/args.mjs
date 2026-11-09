@@ -27,10 +27,19 @@ const JAVA_BOOLEAN = [
   "--settings",
   "--retrieve",
 ];
-const JAVA_VALUE = ["--family", "--package", "--scheme"];
+const JAVA_VALUE = ["--family", "--package", "--scheme", "--project"];
 
 const WEB_BOOLEAN = [];
 const WEB_VALUE = ["--hooks", "--api-version"];
+
+const PROJECT_BOOLEAN = ["--force", "--dry-run"];
+const PROJECT_VALUE = [
+  "--id",
+  "--name",
+  "--group-id",
+  "--version",
+  "--out",
+];
 
 function makeSpec(extraBoolean = [], extraValue = []) {
   return {
@@ -40,6 +49,10 @@ function makeSpec(extraBoolean = [], extraValue = []) {
 }
 
 const COMMAND_SPECS = Object.freeze({
+  init: {
+    boolean: new Set([...GLOBAL_BOOLEAN, ...PROJECT_BOOLEAN]),
+    value: new Set([...GLOBAL_VALUE, ...PROJECT_VALUE]),
+  },
   java: makeSpec(JAVA_BOOLEAN, JAVA_VALUE),
   web: makeSpec(WEB_BOOLEAN, WEB_VALUE),
   list: makeSpec(),

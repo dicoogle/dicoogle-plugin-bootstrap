@@ -257,11 +257,11 @@ test("query-index without --settings does not print the settings warning", async
   assert.doesNotMatch(result.stderr, /IndexSettingsController/);
 });
 
-test("init is no longer a command", async () => {
-  const result = await run(["init"]);
+test("new is no longer a command", async () => {
+  const result = await run(["new"]);
 
   assert.equal(result.code, EXIT_CODES.USAGE);
-  assert.match(result.stderr, /unknown command "init"/);
+  assert.match(result.stderr, /unknown command "new"/);
 });
 
 test("removed flags are rejected", async () => {

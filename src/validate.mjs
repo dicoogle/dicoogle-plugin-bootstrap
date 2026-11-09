@@ -23,11 +23,15 @@ export const WEB_HOOKS = Object.freeze([
 export const DEFAULT_PLUGIN_VERSION = "0.1.0";
 export const DEFAULT_AUTHOR = "Unknown";
 export const DEFAULT_API_VERSION = "1.0";
+export const DEFAULT_PROJECT_GROUP_ID = "com.example";
+export const DEFAULT_PROJECT_VERSION = "0.0.1-SNAPSHOT";
 export const MAX_PLUGIN_ID_LENGTH = 64;
 
 export const PLUGIN_ID_PATTERN = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 export const PACKAGE_PATTERN =
   /^[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+$/;
+export const GROUP_ID_PATTERN =
+  /^[a-z][a-z0-9_-]*(?:\.[a-z][a-z0-9_-]*)+$/;
 export const SCHEME_PATTERN = /^[a-z][a-z0-9+.-]*$/;
 export const PLUGIN_VERSION_PATTERN =
   /^\d+\.\d+\.\d+(?:[-+].*)?$/;
@@ -211,6 +215,45 @@ export function validatePluginId(value, { flag = "--id" } = {}) {
   return raw;
 }
 
+export function validateProjectId(value, { flag = "--id" } = {}) {
+  if (value === undefined || value === null) {
+    fail(`missing required flag "${flag}"`);
+  }
+
+  const raw = String(value);
+
+  if (raw.length === 0) {
+    fail(`invalid project id ${quote(raw)}: must not be empty.`);
+  }
+
+  if (raw.length > MAX_PLUGIN_ID_LENGTH) {
+    fail(
+      `invalid project id ${quote(raw)}: must be at most ` +
+        `${MAX_PLUGIN_ID_LENGTH} characters.`,
+    );
+  }
+
+  if (!PLUGIN_ID_PATTERN.test(raw)) {
+    fail(
+      `invalid project id ${quote(raw)}: must be lowercase kebab-case ` +
+        `matching ${PLUGIN_ID_PATTERN}. ` +
+        `Suggested: ${quote(suggestPluginId(raw))}.`,
+    );
+  }
+
+  const normalized = raw.replaceAll("-", "");
+
+  if (RESERVED_JAVA_WORDS.has(normalized)) {
+    fail(
+      `invalid project id ${quote(raw)}: normalizes to the Java ` +
+        `reserved word ${quote(normalized)}. ` +
+        `Suggested: ${quote(suggestPluginId(raw))}.`,
+    );
+  }
+
+  return raw;
+}
+
 export function validateReservedPluginId(id, reservedIds = []) {
   const reserved = new Set(reservedIds);
 
@@ -348,6 +391,27 @@ export function validatePackageName(
     fail(
       `invalid ${flag} ${quote(raw)}: segment ${quote(reserved)} is a ` +
         `Java reserved word. Suggested: ${quote(suggestPackageName(raw))}.`,
+    );
+  }
+
+  return raw;
+}
+
+export function validateGroupId(
+  value,
+  { flag = "--group-id", fallback = DEFAULT_PROJECT_GROUP_ID } = {},
+) {
+  if (value === undefined || value === null) {
+    return fallback;
+  }
+
+  const raw = String(value);
+
+  if (!GROUP_ID_PATTERN.test(raw)) {
+    fail(
+      `invalid ${flag} ${quote(raw)}: expected a lowercase ` +
+        `dot-separated Maven groupId matching ${GROUP_ID_PATTERN}. ` +
+        `Suggested: ${quote(DEFAULT_PROJECT_GROUP_ID)}.`,
     );
   }
 
@@ -542,17 +606,44 @@ export function validateTypeToken(value, { flag = "--type" } = {}) {
   return trimmed;
 }
 
+export function validateProjectOptions(parsed) {
+  const { flags = {} } = parsed ?? {};
+  const id = validateProjectId(requireFlag(flags, "id", "--id"));
+  const displayName = titleCase(id);
+
+  return {
+    command: "init",
+    flags,
+    values: {
+      id,
+      name: validateDisplayName(flags.name, {
+        fallback: displayName,
+      }),
+      groupId: validateGroupId(flags.groupId),
+      version: validatePluginVersion(flags.version, {
+        flag: "--version",
+        fallback: DEFAULT_PROJECT_VERSION,
+      }),
+    },
+    warnings: [],
+  };
+}
+
 export function validateGenerationOptions(
   parsed,
   { knownIds = [] } = {},
 ) {
-  if (!parsed || !["java", "web"].includes(parsed.command)) {
+  if (!parsed || !["java", "web", "init"].includes(parsed.command)) {
     return {
       command: parsed?.command ?? null,
       flags: parsed?.flags ?? {},
       values: null,
       warnings: [],
     };
+  }
+
+  if (parsed.command === "init") {
+    return validateProjectOptions(parsed);
   }
 
   const { command, flags } = parsed;
@@ -584,6 +675,10 @@ export function validateGenerationOptions(
         `one of: ${JAVA_FAMILIES.join(", ")}`,
       ),
     );
+
+    if (flags.project !== undefined) {
+      values.project = flags.project;
+    }
 
     if (flags.package !== undefined) {
       values.package = validatePackageName(flags.package);
@@ -687,6 +782,20 @@ export function validateGenerationOptions(
   }
 
   const warnings = packageCollisionWarnings(id, knownIds);
+
+  if (
+    command === "java" &&
+    values.package &&
+    values.package !== "org.dicoogle" &&
+    !values.package.startsWith("org.dicoogle.")
+  ) {
+    warnings.push(
+      `Java package "${values.package}" is outside org.dicoogle. ` +
+        "dicoogle-next component-scans org.dicoogle, so this plugin " +
+        "will not be discovered unless the application is changed to " +
+        "import it explicitly.",
+    );
+  }
 
   if (
     command === "web" &&

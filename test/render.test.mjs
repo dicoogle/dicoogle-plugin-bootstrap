@@ -14,6 +14,8 @@ import {
   buildStorageData,
   buildWebData,
 } from "../src/plan.mjs";
+import { buildProjectModel } from "../src/project/model.mjs";
+import { buildProjectData } from "../src/project/plan.mjs";
 import {
   TemplateRenderError,
   renderTemplate,
@@ -211,21 +213,35 @@ test("every template file renders with its full data object", () => {
     ClassName: "MyWebFilter",
     hook: "query-filter",
   };
+  const projectData = buildProjectData(
+    buildProjectModel({
+      flags: { out: "my-project" },
+      values: {
+        id: "my-project",
+        name: "My Project",
+        groupId: "com.example",
+        version: "0.0.1-SNAPSHOT",
+      },
+    }),
+    lock,
+  );
 
   for (const templatePath of templateFiles(DEFAULT_TEMPLATES_DIR)) {
     const content = readFileSync(
       path.join(DEFAULT_TEMPLATES_DIR, templatePath),
       "utf8",
     );
-    const data = templatePath.startsWith("java/query-index/")
-      ? queryData
-      : templatePath.startsWith("java/listener/")
-        ? listenerData
-        : templatePath.startsWith("web/")
-          ? templatePath.endsWith(".tsx.tmpl")
-            ? webComponentData
-            : webData
-          : storageData;
+    const data = templatePath.startsWith("project/")
+      ? projectData
+      : templatePath.startsWith("java/query-index/")
+        ? queryData
+        : templatePath.startsWith("java/listener/")
+          ? listenerData
+          : templatePath.startsWith("web/")
+            ? templatePath.endsWith(".tsx.tmpl")
+              ? webComponentData
+              : webData
+            : storageData;
     const rendered = renderTemplate(content, data, {
       name: templatePath,
     });

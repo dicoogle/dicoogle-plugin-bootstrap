@@ -845,10 +845,65 @@ function main() {
 
     }
 
+    const runProjectScenario =
+      !options.only || options.only.has("project");
+
+    if (runProjectScenario) {
+      console.log("\n=== multi-module project generation ===");
+      const projectRoot = path.join(runRoot, "project");
+      run(
+        process.execPath,
+        [
+          CLI,
+          "init",
+          "--id",
+          "fixture-project",
+          "--name",
+          "Fixture Project",
+          "--out",
+          projectRoot,
+        ],
+        { cwd: TOOL_ROOT },
+      );
+      run(
+        process.execPath,
+        [
+          CLI,
+          "java",
+          "--id",
+          "fixture-project",
+          "--family",
+          "storage",
+          "--readable",
+          "--project",
+          projectRoot,
+        ],
+        { cwd: TOOL_ROOT },
+      );
+
+      const projectPom = readFileSync(
+        path.join(projectRoot, "pom.xml"),
+        "utf8",
+      );
+      const projectModule =
+        "<module>plugins/dicoogle-next-storage-fixture-project</module>";
+
+      if (!projectPom.includes(projectModule)) {
+        throw new Error(
+          `project POM does not contain ${projectModule}`,
+        );
+      }
+
+      run("mvn", ["-B", "-ntp", "package"], {
+        cwd: projectRoot,
+      });
+    }
+
     const completed = [
       "selected fixture cases",
       ...(options.skipFullReactor ? [] : ["full reactor"]),
       ...(options.skipStandalone ? [] : ["standalone builds"]),
+      ...(runProjectScenario ? ["multi-module project"] : []),
     ];
     console.log(`\n${completed.join(", ")} passed.`);
 

@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import path from "node:path";
 
 import { parseArgv, validateArgv } from "./args.mjs";
 import {
@@ -25,6 +26,12 @@ import {
   materializePlan,
 } from "./plan.mjs";
 import {
+  addModuleToProjectPom,
+  inspectProjectPom,
+} from "./pom.mjs";
+import { buildProjectModel } from "./project/model.mjs";
+import { buildProjectPlan } from "./project/plan.mjs";
+import {
   validateGenerationOptions,
   validateReservedPluginId,
 } from "./validate.mjs";
@@ -38,6 +45,7 @@ export const TOOL_VERSION = packageJson.version;
 export const HELP_TEXT = `Usage: dicoogle-plugin-bootstrap <command> [flags]
 
 Commands:
+  init      Create a multi-module Maven project root
   java      Generate a Java Maven module (storage, query-index, listener)
   web       Generate a web UI plugin folder
   list      Show families, web hooks, and template pin status
@@ -58,10 +66,20 @@ Common generation flags:
   --license <SPDX|none>   Optional Java SPDX header line
   --type <token>          Override the single metadata type token
 
+Project flags (init):
+  --id <kebab>        Project id / Maven artifactId
+  --name <name>       Display name
+  --group-id <id>     Maven groupId (default com.example)
+  --version <v>       Maven version (default 0.0.1-SNAPSHOT)
+  --out <path>        Target directory
+  --force             Allow a non-empty target
+  --dry-run           Print the file tree without writing
+
 Java flags:
   --family storage|query-index|listener
   --package <pkg>     Java package override
   --scheme <scheme>   Storage scheme
+  --project <dir>     Add the module to an existing project root
   storage:     --readable --writable --listable --locator
   query-index: --ingest --query --move --maintenance --settings
                query()/resolve() return empty until matching is implemented.
@@ -193,6 +211,39 @@ export async function main(
         io.stdout.write(formatList(loadLock()));
         return EXIT_CODES.OK;
       }
+      case "init": {
+        const lock = loadLock();
+        const model = buildProjectModel({
+          flags: parsed.flags,
+          values: validated.values,
+        });
+        const plan = buildProjectPlan(model, lock);
+        const files = materializePlan(plan, {
+          templatesDir: DEFAULT_TEMPLATES_DIR,
+        });
+
+        if (parsed.flags.dryRun === true) {
+          io.stdout.write(
+            formatDryRunTree({
+              out: model.out,
+              files: plan.files,
+              force: parsed.flags.force === true,
+            }),
+          );
+          return EXIT_CODES.OK;
+        }
+
+        const result = writePlan({
+          out: model.out,
+          files,
+          force: parsed.flags.force === true,
+        });
+
+        io.stdout.write(
+          `created ${files.length} file(s) in ${result.root}\n`,
+        );
+        return EXIT_CODES.OK;
+      }
       case "java": {
         const lock = loadLock();
         validateReservedPluginId(
@@ -229,7 +280,33 @@ export async function main(
                   flags: parsed.flags,
                   values: validated.values,
                 });
-        inspectParentPom({ out: model.out, lock });
+        const project = validated.values?.project ?? null;
+        let projectInfo = null;
+        let modulePath = null;
+
+        if (project !== null) {
+          projectInfo = inspectProjectPom({ project, lock });
+          const relativeOut = path.relative(
+            projectInfo.projectRoot,
+            path.resolve(model.out),
+          );
+
+          if (
+            relativeOut.length === 0 ||
+            relativeOut.startsWith("..") ||
+            path.isAbsolute(relativeOut)
+          ) {
+            throw new UsageError(
+              `with --project, --out must be inside ` +
+                `${projectInfo.projectRoot}.`,
+            );
+          }
+
+          modulePath = relativeOut.split(path.sep).join("/");
+        } else {
+          inspectParentPom({ out: model.out, lock });
+        }
+
         const plan =
           family === "storage"
             ? buildStoragePlan(model, lock)
@@ -256,6 +333,13 @@ export async function main(
           files,
           force: parsed.flags.force === true,
         });
+
+        if (projectInfo !== null) {
+          addModuleToProjectPom({
+            projectPom: projectInfo.projectPom,
+            module: modulePath,
+          });
+        }
 
         io.stdout.write(
           `created ${files.length} file(s) in ${result.root}\n`,

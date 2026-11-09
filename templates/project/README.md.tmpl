@@ -1,0 +1,92 @@
+# {{name}}
+
+Maven project for dicoogle-next plugins.
+
+- Project id: `{{id}}`
+- Maven coordinates: `{{groupId}}:{{artifactId}}:{{version}}`
+- Parent: `{{parentGroupId}}:{{parentArtifactId}}:{{parentVersion}}`
+
+This project was created by the `init` command. Add plugin modules with
+`java --project`.
+
+## Prerequisites
+
+Java {{javaVersion}} and Maven {{mavenMinimum}} or newer are required. The
+dicoogle-next parent enforces these versions, so an older JDK or Maven fails the
+build. This generated project has no Maven wrapper; use `mvn` from `PATH`.
+
+The dicoogle-next parent and SDK are not published to a remote repository. Install
+them from a dicoogle-next checkout first:
+
+```bash
+cd /path/to/dicoogle-next/backend
+./mvnw -B -ntp -N install
+./mvnw -B -ntp -pl dicoogle-next-sdk -am install
+```
+
+If you need to run the prebuilt application, install the full backend so the
+application jar and its built-in modules are present in `~/.m2`:
+
+```bash
+./mvnw -B -ntp install
+```
+
+## Add a plugin
+
+Run the bootstrap tool from this project root with `--project .`:
+
+```bash
+node /path/to/dicoogle-plugin-bootstrap/bin/dicoogle-plugin-bootstrap.mjs java \
+  --id my-store \
+  --family storage \
+  --readable \
+  --project .
+```
+
+The generator writes the module under `plugins/<artifactId>` and adds a
+`<module>plugins/<artifactId></module>` entry to this project's `pom.xml`.
+Use `--dry-run` to inspect the generated files without writing anything.
+
+Build the project:
+
+```bash
+mvn -B -ntp package
+```
+
+## Run the prebuilt app with plugin jars
+
+The dicoogle-next application artifact is a Spring Boot executable jar. Use
+`PropertiesLauncher` and `loader.path` to add plugin jars from this project:
+
+```bash
+java \
+  -Dloader.path="plugins/my-store/target/dicoogle-next-storage-my-store-0.0.1-SNAPSHOT.jar" \
+  -cp "$HOME/.m2/repository/org/dicoogle/dicoogle-next/0.0.1-SNAPSHOT/dicoogle-next-0.0.1-SNAPSHOT.jar" \
+  org.springframework.boot.loader.launch.PropertiesLauncher \
+  --app.storage.my-store.enabled=true
+```
+
+Use the property prefix that matches the generated module (`app.storage.<id>`,
+`app.query.<id>`, or `app.service.<id>`). Generated plugins are disabled by
+default, so the `enabled` property is required.
+
+{{#if runVerified}}The run method above was verified against dicoogle-next
+`0.0.1-SNAPSHOT`: the generated storage plugin appeared in
+`/api/system/plugins` and its scheme was reported in the startup log.{{/if}}{{#unless runVerified}}The run method above is **unverified** in this environment.
+Check it against your dicoogle-next build before relying on it.{{/unless}}
+
+## Multi-module layout
+
+```text
+.
+  pom.xml                 # this aggregator project
+  plugins/
+    my-store/
+      pom.xml             # plugin module, parented to dicoogle-next
+      src/...
+```
+
+Plugin modules inherit directly from
+`{{parentGroupId}}:{{parentArtifactId}}:{{parentVersion}}` with an empty
+`<relativePath/>`, so they resolve the parent and the
+`{{sdkArtifactId}}:{{sdkVersion}}` SDK from the local Maven repository.

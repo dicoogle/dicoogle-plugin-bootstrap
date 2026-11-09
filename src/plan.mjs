@@ -54,6 +54,8 @@ export function buildStorageData(model, lock) {
     licenseSpdx: model.license ?? "",
     enabledDefault: model.enabledDefault,
     matchIfMissing: model.matchIfMissing,
+    projectMode: Boolean(model.project),
+    parentRelativePath: "../../pom.xml",
     ClassName: model.className,
     className: model.className,
   };
@@ -136,6 +138,8 @@ export function buildQueryIndexData(model, lock) {
     licenseSpdx: model.license ?? "",
     enabledDefault: model.enabledDefault,
     matchIfMissing: model.matchIfMissing,
+    projectMode: Boolean(model.project),
+    parentRelativePath: "../../pom.xml",
     ClassName: model.className,
     className: model.className,
   };
@@ -217,6 +221,8 @@ export function buildListenerData(model, lock) {
     licenseSpdx: model.license ?? "",
     enabledDefault: model.enabledDefault,
     matchIfMissing: model.matchIfMissing,
+    projectMode: Boolean(model.project),
+    parentRelativePath: "../../pom.xml",
     ClassName: model.className,
     className: model.className,
   };

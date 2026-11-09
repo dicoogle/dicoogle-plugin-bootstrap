@@ -1,10 +1,12 @@
 # dicoogle-plugin-bootstrap
 
-`dicoogle-plugin-bootstrap` generates starter plugins for dicoogle-next. It
-creates files only: it does not edit the dicoogle-next checkout, add modules or
-dependencies, change YAML, or wire anything for you. All wiring is manual and
-reviewable. Node.js 20 or newer is required. Java 21 and Maven 3.9.12 are needed
-only when building generated Java plugins.
+`dicoogle-plugin-bootstrap` generates starter plugins for dicoogle-next. It can
+generate a standalone plugin module, a plugin module inside an existing
+dicoogle-next checkout, or a new multi-module Maven project with `init` plus
+`java --project`. It never edits the dicoogle-next checkout, and it does not
+change application YAML or wire plugins into the app for you. Node.js 20 or newer
+is required. Java 21 and Maven 3.9.12 are needed only when building generated
+Java plugins.
 
 Run it directly; no `npm install` is needed:
 
@@ -16,22 +18,24 @@ node bin/dicoogle-plugin-bootstrap.mjs version
 ## How it works
 
 ```text
-Java:  Generate -> Build module -> Wire POMs -> Rebuild/run app
-
-Web:   Generate -> Copy to webapp/src/plugins -> Vite build -> Run web app
+Project: init -> java --project -> mvn package -> run prebuilt app + plugin jars
+In-repo: generate -> add module/dependency by hand -> rebuild app
+Web:     generate -> copy to webapp/src/plugins -> Vite build -> run web app
 ```
 
 1. The tool writes a self-contained folder under `--out`.
 2. Java output is a normal Maven module. It depends on the dicoogle-next parent
    POM and SDK, so install those once from the dicoogle-next checkout. They are
    not published remotely.
-3. dicoogle-next has no drop-in Java plugin folder. A generated module becomes
-   part of the app when it is added to `backend/pom.xml` and as a dependency in
-   `backend/dicoogle-next/pom.xml`. The plugin jar then ends up inside the app's
-   jar.
+3. dicoogle-next has no drop-in Java plugin folder. In the project flow, `init`
+   creates a `<packaging>pom</packaging>` root and `java --project` adds each
+   module to its `<modules>` block. In the in-repo flow, add the module to
+   `backend/pom.xml` and as a dependency in `backend/dicoogle-next/pom.xml`
+   yourself; the plugin jar then ends up inside the app's jar.
 4. At startup the Spring application scans `org.dicoogle`. The generated
    `Config` class creates the plugin bean only when its `enabled` property is
-   `true`. Generated Java plugins are off by default.
+   `true`. Generated Java plugins are off by default. A plugin package outside
+   `org.dicoogle` is not discovered; the tool prints a warning for that case.
 5. Web output has no build of its own. Copy the folder under
    `webapp/src/plugins/`; the host Vite build discovers `plugin.config.json` and
    compiles the entry into the web app. Restart Vite when adding a new folder.
@@ -53,6 +57,68 @@ Web:   Generate -> Copy to webapp/src/plugins -> Vite build -> Run web app
 | Web `settings` | You add a settings tab. | Runs in the browser only. |
 
 Multiple web hooks can be generated together.
+
+## Walkthrough 0: multi-module project with the prebuilt app
+
+Create the project root once:
+
+```bash
+node bin/dicoogle-plugin-bootstrap.mjs init \
+  --id my-plugins \
+  --name "My Dicoogle Plugins" \
+  --group-id com.example \
+  --version 0.0.1-SNAPSHOT \
+  --out /path/to/my-plugins
+```
+
+This writes `pom.xml`, `.gitignore`, and `README.md`. The root POM uses
+`org.dicoogle:dicoogle-next-backend-parent:0.0.1-SNAPSHOT` as its parent with an
+empty `<relativePath/>`, is `<packaging>pom</packaging>`, and starts with an empty
+`<modules>` block.
+
+The dicoogle parent enforces Java 21 and Maven 3.9.12 or newer, so those versions
+are required. The generated project has no Maven wrapper; use `mvn` from `PATH`.
+
+Add a plugin module:
+
+```bash
+node bin/dicoogle-plugin-bootstrap.mjs java \
+  --id my-store \
+  --family storage \
+  --readable \
+  --project /path/to/my-plugins
+```
+
+With `--project`, the module is written to
+`<project>/plugins/dicoogle-next-storage-my-store` unless `--out` overrides it,
+and `plugins/dicoogle-next-storage-my-store` is appended to the root `<modules>`
+block. The generated module inherits directly from the dicoogle parent with
+`<relativePath/>`. Use `--dry-run` to inspect the output without writing files or
+editing the root POM.
+
+Build the project:
+
+```bash
+cd /path/to/my-plugins
+mvn -B -ntp package
+```
+
+Run the prebuilt dicoogle-next fat jar with the plugin jars on the loader path.
+This exact method was verified against the locally installed
+`0.0.1-SNAPSHOT` artifact: the generated storage plugin appeared in
+`/api/system/plugins` and its scheme was reported in the startup log.
+
+```bash
+java \
+  -Dloader.path=/path/to/my-plugins/plugins/my-store/target/dicoogle-next-storage-my-store-0.0.1-SNAPSHOT.jar \
+  -cp "$HOME/.m2/repository/org/dicoogle/dicoogle-next/0.0.1-SNAPSHOT/dicoogle-next-0.0.1-SNAPSHOT.jar" \
+  org.springframework.boot.loader.launch.PropertiesLauncher \
+  --app.storage.my-store.enabled=true
+```
+
+Use the property prefix that matches the module (`app.storage.<id>`,
+`app.query.<id>`, or `app.service.<id>`). Do not use `java -jar` for this: the
+external plugin jars are not inside the application fat jar.
 
 ## Walkthrough 1: Java storage plugin
 
@@ -270,6 +336,18 @@ Common fixes:
 
 ## Quick reference
 
+`init` flags:
+
+| Flag | Default | Applies to |
+|---|---|---|
+| `--id <kebab>` | required | `init` (project id / artifactId) |
+| `--name <text>` | title-cased id | `init` |
+| `--group-id <id>` | `com.example` | `init` |
+| `--version <v>` | `0.0.1-SNAPSHOT` | `init` |
+| `--out <path>` | project id | `init` |
+| `--force` | off | `init` |
+| `--dry-run` | off | `init` |
+
 Common flags:
 
 | Flag | Default | Applies to |
@@ -294,8 +372,9 @@ Java-only flags:
 | `--readable`, `--writable`, `--listable`, `--locator` | readable if no concrete storage capability | storage only |
 | `--ingest`, `--query`, `--move`, `--maintenance`, `--settings` | at least one required | query-index |
 | `--ingest`, `--retrieve` | exactly one required | listener |
-| `--package <pkg>` | `org.dicoogle.<domain>.<id>` | Java |
+| `--package <pkg>` | `org.dicoogle.<domain>.<id>` | Java; packages outside `org.dicoogle` produce a discovery warning |
 | `--scheme <scheme>` | id | storage; ignored by other Java families |
+| `--project <dir>` | none | Java; writes to `<project>/plugins/<artifactId>` and adds the module to the project root POM |
 
 Web-only flags:
 
@@ -323,7 +402,8 @@ Any other non-zero code is an internal error.
 The Java fixture matrix is `scripts/build-fixtures.mjs`. It clones
 dicoogle-next into a temporary directory at the pinned commit, generates
 modules, checks Spotless and tests, runs the full reactor and standalone
-builds, and keeps the clone for inspection when asked. Run it with:
+builds, generates a multi-module project, and keeps the clone for inspection
+when asked. Run it with:
 
 ```bash
 node scripts/build-fixtures.mjs --repo /path/to/dicoogle-next
@@ -343,6 +423,7 @@ npm test
 Known limits:
 
 - Web placement is verified by the Vite build only, not in a browser.
-- Java load is verified by a MockMvc test, not a live server.
+- Java load from external jars is verified for one generated storage plugin
+  using `PropertiesLauncher` and `-Dloader.path`, not for every family or in CI.
 - There is no template drift check.
 - There is no duplicate-id scan beyond the reserved list.

@@ -7,7 +7,7 @@
         <groupId>{{parentGroupId}}</groupId>
         <artifactId>{{parentArtifactId}}</artifactId>
         <version>{{parentVersion}}</version>
-        <relativePath>../../pom.xml</relativePath>
+{{#if projectMode}}        <relativePath/>{{/if}}{{#unless projectMode}}        <relativePath>{{parentRelativePath}}</relativePath>{{/unless}}
     </parent>
 
     <artifactId>{{artifactId}}</artifactId>
